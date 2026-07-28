@@ -26,6 +26,7 @@ import { useAuth } from './AuthContext';
 import {
   EmergencyEvent,
   EmergencyAlert,
+  AemetAlert,
   OperationalResource,
   ResourceRequest,
   VolunteerProfile,
@@ -55,6 +56,7 @@ import {
   initialActivityLogs,
 } from '../services/mockData';
 import { detectFires } from '../services/fireDetectionEngine';
+import { fetchAemetAlerts } from '../services/aemetService';
 
 interface EmergencyContextType {
   municipalities: Municipality[];
@@ -68,6 +70,7 @@ interface EmergencyContextType {
   documents: DocumentAttachment[];
   activityLogs: ActivityLog[];
   satelliteHotspots: SatelliteHotspot[];
+  aemetAlerts: AemetAlert[];
 
   // Geolocalización pública para alertas sin registro
   publicLocation: { latitude: number; longitude: number } | null;
@@ -169,6 +172,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [documents, setDocuments] = useState<DocumentAttachment[]>(initialDocuments);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
   const [satelliteHotspots, setSatelliteHotspots] = useState<SatelliteHotspot[]>([]);
+  const [aemetAlerts, setAemetAlerts] = useState<AemetAlert[]>([]);
   const [publicLocation, setPublicLocationState] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSatelliteScanning, setIsSatelliteScanning] = useState<boolean>(false);
   const [lastSatelliteScan, setLastSatelliteScan] = useState<string | null>(null);
@@ -190,6 +194,13 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   useEffect(() => {
     satelliteHotspotsRef.current = satelliteHotspots;
   }, [satelliteHotspots]);
+
+  // Cargar avisos meteorológicos de AEMET (público)
+  useEffect(() => {
+    fetchAemetAlerts()
+      .then((alerts) => setAemetAlerts(alerts))
+      .catch((err) => console.warn('Error cargando avisos AEMET:', err));
+  }, []);
 
   // Cargar listado real de municipios españoles
   useEffect(() => {
@@ -698,6 +709,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         documents,
         activityLogs,
         satelliteHotspots,
+        aemetAlerts,
         publicLocation,
         setPublicLocation,
         isLoading,

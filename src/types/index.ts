@@ -207,6 +207,17 @@ export interface PatrolLocation {
   timestamp: string;
 }
 
+export interface AemetAlert {
+  id: string;
+  title: string;
+  description: string;
+  link: string;
+  pubDate: string;
+  level: 'verde' | 'amarillo' | 'naranja' | 'rojo';
+  phenomenon: string;
+  area: string;
+}
+
 export interface BandoMessage {
   id: string;
   senderUid: string;

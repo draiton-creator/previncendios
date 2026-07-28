@@ -1,7 +1,9 @@
 /**
- * Servicio AEMET para cálculo de riesgo de incendios y condiciones meteorológicas
+ * Servicio AEMET para avisos meteorológicos oficiales y cálculo de riesgo
  * Previncendios España
  */
+
+import { AemetAlert } from '../types';
 
 export interface WeatherData {
   municipalityId: string;
@@ -72,6 +74,42 @@ export const mockAemetData: Record<string, WeatherData> = {
   },
 };
 
+const mockAemetAlerts: AemetAlert[] = [
+  {
+    id: 'aemet-demo-1',
+    title: 'Aviso. Nivel amarillo. Temperaturas máximas. Valle del Guadalquivir',
+    description: 'Aviso de temperatura máxima de nivel amarillo.',
+    link: 'https://www.aemet.es/es/eltiempo/prediccion/avisos',
+    pubDate: new Date().toISOString(),
+    level: 'amarillo',
+    phenomenon: 'Temperaturas máximas',
+    area: 'Valle del Guadalquivir',
+  },
+  {
+    id: 'aemet-demo-2',
+    title: 'Aviso. Nivel naranja. Riesgo de incendios. Zona norte de Cáceres',
+    description: 'Riesgo importante de incendios forestales por altas temperaturas y viento seco.',
+    link: 'https://www.aemet.es/es/eltiempo/prediccion/avisos',
+    pubDate: new Date().toISOString(),
+    level: 'naranja',
+    phenomenon: 'Riesgo de incendios',
+    area: 'Zona norte de Cáceres',
+  },
+];
+
+function parseLevelFromTitle(title: string): AemetAlert['level'] {
+  const lower = title.toLowerCase();
+  if (lower.includes('rojo')) return 'rojo';
+  if (lower.includes('naranja')) return 'naranja';
+  if (lower.includes('amarillo')) return 'amarillo';
+  return 'verde';
+}
+
+function getXmlText(node: Element | null, tag: string): string {
+  const el = node?.getElementsByTagName(tag)?.[0];
+  return el?.textContent?.trim() || '';
+}
+
 export async function fetchAemetWeatherData(municipalityId: string): Promise<WeatherData> {
   return mockAemetData[municipalityId] || {
     municipalityId,
@@ -86,4 +124,55 @@ export async function fetchAemetWeatherData(municipalityId: string): Promise<Wea
       { day: 'Jueves', maxTemp: 32.0, risk: 'Moderado' },
     ],
   };
+}
+
+export async function fetchAemetAlerts(): Promise<AemetAlert[]> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(
+      'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAE_wah_RSS.xml',
+      { signal: controller.signal, cache: 'no-store' }
+    );
+    clearTimeout(timeoutId);
+    if (!res.ok) return mockAemetAlerts;
+
+    const xmlText = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'application/xml');
+    const items = doc.querySelectorAll('item');
+
+    const alerts: AemetAlert[] = [];
+    items.forEach((item) => {
+      const title = getXmlText(item, 'title');
+      const description = getXmlText(item, 'description');
+      const link = getXmlText(item, 'link');
+      const pubDate = getXmlText(item, 'pubDate');
+      const guid = getXmlText(item, 'guid');
+      const level = parseLevelFromTitle(title);
+
+      // Título típico: "Aviso. Nivel amarillo. Temperaturas máximas. Ampurdán"
+      const parts = title.split('.').map((p) => p.trim()).filter(Boolean);
+      const phenomenon = parts.length > 2 ? parts[2] : '';
+      const area = parts.length > 3 ? parts.slice(3).join('. ') : (parts[3] || '');
+
+      if (title) {
+        alerts.push({
+          id: guid || `aemet-${title}`,
+          title,
+          description,
+          link,
+          pubDate,
+          level,
+          phenomenon,
+          area,
+        });
+      }
+    });
+
+    return alerts.length > 0 ? alerts : mockAemetAlerts;
+  } catch (err) {
+    console.warn('[AEMET] No se pudieron obtener avisos, usando fallback:', err);
+    return mockAemetAlerts;
+  }
 }
