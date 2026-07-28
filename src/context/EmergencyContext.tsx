@@ -69,6 +69,10 @@ interface EmergencyContextType {
   activityLogs: ActivityLog[];
   satelliteHotspots: SatelliteHotspot[];
 
+  // Geolocalización pública para alertas sin registro
+  publicLocation: { latitude: number; longitude: number } | null;
+  setPublicLocation: (lat: number, lng: number) => void;
+
   // Estado
   isLoading: boolean;
   error: string | null;
@@ -165,6 +169,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [documents, setDocuments] = useState<DocumentAttachment[]>(initialDocuments);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
   const [satelliteHotspots, setSatelliteHotspots] = useState<SatelliteHotspot[]>([]);
+  const [publicLocation, setPublicLocationState] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSatelliteScanning, setIsSatelliteScanning] = useState<boolean>(false);
   const [lastSatelliteScan, setLastSatelliteScan] = useState<string | null>(null);
 
@@ -396,6 +401,10 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const isUserMobilizedTo = (incidentId: string): boolean => {
     const userUid = user?.uid || 'invitado';
     return activeMobilizations[userUid] === incidentId;
+  };
+
+  const setPublicLocation = (lat: number, lng: number) => {
+    setPublicLocationState({ latitude: lat, longitude: lng });
   };
 
   // Crear Incidencia
@@ -689,6 +698,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         documents,
         activityLogs,
         satelliteHotspots,
+        publicLocation,
+        setPublicLocation,
         isLoading,
         error,
         filters,

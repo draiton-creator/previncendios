@@ -2,8 +2,8 @@
  * Dashboard Invitado (Acceso Público Limitado) - Previncendios España
  */
 
-import React from 'react';
-import { Eye, Shield, MapPin, Info, Flame, Lock, Radio } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, Shield, MapPin, Info, Flame, Lock, Radio, Navigation } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { EmergencyMap } from '../../components/map/EmergencyMap';
 import { SatelliteHotspotsFeed } from '../../components/satellite/SatelliteHotspotsFeed';
@@ -17,7 +17,27 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
   onNavigateTab,
   onOpenRoleModal,
 }) => {
-  const { incidents, alerts, messages, setSelectedIncident } = useEmergency();
+  const { incidents, alerts, messages, setSelectedIncident, publicLocation, setPublicLocation } = useEmergency();
+  const [gpsMessage, setGpsMessage] = useState<string | null>(null);
+
+  const handlePublicGps = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setPublicLocation(pos.coords.latitude, pos.coords.longitude);
+          setGpsMessage(`Alerta activada para tu zona (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
+          setTimeout(() => setGpsMessage(null), 5000);
+        },
+        () => {
+          setGpsMessage('No se pudo obtener la ubicación. Activa el GPS del dispositivo.');
+          setTimeout(() => setGpsMessage(null), 5000);
+        }
+      );
+    } else {
+      setGpsMessage('Tu navegador no soporta geolocalización.');
+      setTimeout(() => setGpsMessage(null), 5000);
+    }
+  };
 
   const publicIncidents = incidents.filter((i) => i.status !== 'extinguido');
   const publicAlerts = alerts.filter((a) => a.isActive);
@@ -42,12 +62,26 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={onOpenRoleModal}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-red-700 shrink-0"
-          >
-            Acceder como Voluntario / Ayuntamiento
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <button
+              onClick={handlePublicGps}
+              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-700 flex items-center justify-center gap-1.5"
+            >
+              <Navigation className="h-4 w-4" />
+              {publicLocation ? 'Actualizar mi ubicación' : 'Alertarme si hay fuego cerca'}
+            </button>
+            <button
+              onClick={onOpenRoleModal}
+              className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-red-700 shrink-0"
+            >
+              Acceder como Voluntario / Ayuntamiento
+            </button>
+          </div>
+          {gpsMessage && (
+            <div className="md:hidden w-full rounded-lg bg-emerald-500/20 border border-emerald-400/30 px-3 py-2 text-[11px] font-bold text-emerald-100">
+              {gpsMessage}
+            </div>
+          )}
         </div>
       </div>
 

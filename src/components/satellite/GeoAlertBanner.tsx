@@ -18,7 +18,7 @@ interface GeoAlertBannerProps {
 }
 
 export const GeoAlertBanner: React.FC<GeoAlertBannerProps> = ({ onOpenMap }) => {
-  const { satelliteHotspots } = useEmergency();
+  const { satelliteHotspots, publicLocation } = useEmergency();
   const { user } = useAuth();
   const [nearest, setNearest] = React.useState<{
     spot: SatelliteHotspot;
@@ -27,8 +27,8 @@ export const GeoAlertBanner: React.FC<GeoAlertBannerProps> = ({ onOpenMap }) => 
   const [dismissed, setDismissed] = React.useState<string | null>(null);
   const notifiedRef = useRef<Set<string>>(new Set());
 
-  const userLat = user?.currentLocation?.latitude;
-  const userLng = user?.currentLocation?.longitude;
+  const userLat = user?.currentLocation?.latitude ?? publicLocation?.latitude;
+  const userLng = user?.currentLocation?.longitude ?? publicLocation?.longitude;
 
   useEffect(() => {
     if (userLat == null || userLng == null) {
