@@ -12,6 +12,7 @@ import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { RoleSelectorModal } from './components/common/RoleSelectorModal';
 import { AlertBanner } from './components/alerts/AlertBanner';
+import { GeoAlertBanner } from './components/satellite/GeoAlertBanner';
 
 import { SuperAdminDashboard } from './pages/dashboards/SuperAdminDashboard';
 import { MunicipalDashboard } from './pages/dashboards/MunicipalDashboard';
@@ -134,6 +135,9 @@ const MainAppContent: React.FC = () => {
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans antialiased dark:bg-gray-950 dark:text-gray-100 transition-colors">
       {/* Banner de Alerta Crítica */}
       <AlertBanner onOpenAlertsTab={() => setActiveTab('alertas')} />
+
+      {/* Alerta de fuego satelital cercano a la ubicación del usuario */}
+      <GeoAlertBanner onOpenMap={() => setActiveTab('mapa')} />
 
       {/* Header Superior */}
       <Header

@@ -31,6 +31,7 @@ import { useEmergency } from '../../context/EmergencyContext';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/common/StatCard';
 import { EmergencyMap } from '../../components/map/EmergencyMap';
+import { SatelliteHotspotsFeed } from '../../components/satellite/SatelliteHotspotsFeed';
 
 interface CitizenDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -584,6 +585,11 @@ export const CitizenDashboard: React.FC<CitizenDashboardProps> = ({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Feed de Focos Satelitales */}
+        <div className="lg:col-span-4">
+          <SatelliteHotspotsFeed maxItems={8} onOpenMap={() => onNavigateTab('mapa')} />
         </div>
       </div>
     </div>

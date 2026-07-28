@@ -6,6 +6,7 @@ import React from 'react';
 import { Eye, Shield, MapPin, Info, Flame, Lock, Radio } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { EmergencyMap } from '../../components/map/EmergencyMap';
+import { SatelliteHotspotsFeed } from '../../components/satellite/SatelliteHotspotsFeed';
 
 interface GuestDashboardProps {
   onNavigateTab: (tab: string) => void;
@@ -80,6 +81,9 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
           className="h-[420px] w-full rounded-2xl border border-gray-200 shadow-sm dark:border-gray-800"
         />
       </div>
+
+      {/* Feed de Focos Satelitales */}
+      <SatelliteHotspotsFeed onOpenMap={() => onNavigateTab('mapa')} />
 
       {/* Bandos Públicos */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">

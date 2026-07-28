@@ -90,7 +90,7 @@ function toRadians(deg: number) {
   return (deg * Math.PI) / 180;
 }
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371;
   const dLat = toRadians(lat2 - lat1);
   const dLng = toRadians(lng2 - lng1);
