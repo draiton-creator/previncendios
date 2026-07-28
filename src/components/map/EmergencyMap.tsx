@@ -8,7 +8,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEmergency } from '../../context/EmergencyContext';
 import { EmergencyEvent, SatelliteHotspot, OperationalResource, PatrolLocation } from '../../types';
-import { cardinalToDegrees, destinationPoint } from '../../services/fireDetectionEngine';
+import { cardinalToDegrees, destinationPoint, getFirmsWmsBaseUrl } from '../../services/fireDetectionEngine';
 
 interface EmergencyMapProps {
   onSelectIncident?: (incident: EmergencyEvent) => void;
@@ -56,6 +56,8 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const firmsWmsRef = useRef<L.TileLayer | null>(null);
 
   const {
     incidents,
@@ -114,16 +116,19 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     };
   }, []);
 
-  // Actualizar Capa Base (Callejero vs Satélite vs Relieve)
+  // Actualizar Capa Base (Callejero vs Satélite vs Relieve) + capa WMS FIRMS opcional
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    map.eachLayer((layer) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer);
-      }
-    });
+    if (baseLayerRef.current) {
+      map.removeLayer(baseLayerRef.current);
+      baseLayerRef.current = null;
+    }
+    if (firmsWmsRef.current) {
+      map.removeLayer(firmsWmsRef.current);
+      firmsWmsRef.current = null;
+    }
 
     let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
     let attribution = '&copy; OpenStreetMap';
@@ -136,8 +141,23 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
       attribution = '&copy; OpenTopoMap';
     }
 
-    L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(map);
-  }, [mapLayers.tileLayer]);
+    baseLayerRef.current = L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(map);
+
+    if (mapLayers.showFirmsWms) {
+      const firmsWmsUrl = getFirmsWmsBaseUrl();
+      if (firmsWmsUrl) {
+        firmsWmsRef.current = L.tileLayer
+          .wms(firmsWmsUrl, {
+            layers: 'fires_viirs_24,fires_modis_24',
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.85,
+            version: '1.1.1',
+          })
+          .addTo(map);
+      }
+    }
+  }, [mapLayers.tileLayer, mapLayers.showFirmsWms]);
 
   // Dibujar Marcadores y Capas
   useEffect(() => {
@@ -208,28 +228,35 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
             : spot.riskLevel === 'Moderado'
             ? '#eab308'
             : '#6b7280';
-        const icon = createCustomMarkerIcon(markerColor, '🛰️');
-        const marker = L.marker([spot.latitude, spot.longitude], { icon });
+        const radius = Math.max(4, Math.min(18, (spot.frp || 1) * 0.6 + 4));
+        const marker = L.circleMarker([spot.latitude, spot.longitude], {
+          radius,
+          color: '#ffffff',
+          weight: 1,
+          opacity: 0.9,
+          fillColor: markerColor,
+          fillOpacity: 0.85,
+        });
 
         const riskColor = markerColor;
 
         marker.bindPopup(`
-          <div style="min-width: 220px">
-            <span style="background-color: #eab308; color: black; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold;">
-              SATÉLITE NASA FIRMS (${spot.satellite})
+          <div style="min-width: 240px; max-width: 320px;">
+            <span style="background-color: ${riskColor}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold;">
+              ${spot.satellite} · FRP ${spot.frp} MW
             </span>
-            <h4 style="font-weight: 700; font-size: 13px; margin-top: 6px;">Anomalía Térmica Satelital</h4>
-            <p style="font-size: 11px; color: #4b5563;">Municipio: ${spot.municipalityName}</p>
-            <p style="font-size: 11px; color: #4b5563;">Potencia Térmica (FRP): <b>${spot.frp} MW</b></p>
-            <p style="font-size: 10px; color: #6b7280; margin-top: 4px;">Detección: ${spot.acqDate} ${spot.acqTime} UTC</p>
+            <h4 style="font-weight: 700; font-size: 13px; margin-top: 6px;">Anomalía Térmica FIRMS</h4>
+            <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Municipio:</b> ${spot.municipalityName}</p>
+            <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Brillo:</b> ${spot.brightness || '-'} K · <b>Confianza:</b> ${spot.confidence}</p>
+            <p style="font-size: 10px; color: #6b7280; margin: 2px 0;"><b>Detección:</b> ${spot.acqDate} ${spot.acqTime} UTC${spot.daynight ? ' · ' + spot.daynight : ''}${spot.version ? ' · v' + spot.version : ''}</p>
             ${
               spot.riskLevel
                 ? `
             <div style="margin-top: 8px; padding: 8px; background-color: #fefce8; border-radius: 6px;">
-              <p style="font-size: 11px; color: ${riskColor}; font-weight: bold;">Riesgo IA: ${spot.riskLevel}</p>
-              <p style="font-size: 11px; color: #4b5563;">Propagación: <b>${spot.spreadDirection || '-'}</b> a ${spot.spreadSpeedKmH || 0} km/h</p>
-              <p style="font-size: 11px; color: #4b5563;">Área estimada: ${spot.affectedAreaHectares || 0} ha</p>
-              <p style="font-size: 10px; color: #6b7280; margin-top: 4px;">Viento: ${spot.windDirection || '-'} ${spot.windSpeedKmH || 0} km/h · Temp: ${spot.temperatureC || '-'}ºC · Hum: ${spot.humidityPercent || '-'}%</p>
+              <p style="font-size: 11px; color: ${riskColor}; font-weight: bold;">Riesgo: ${spot.riskLevel}</p>
+              <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Propagación:</b> ${spot.spreadDirection || '-'} a ${spot.spreadSpeedKmH || 0} km/h</p>
+              <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Área estimada:</b> ${spot.affectedAreaHectares || 0} ha</p>
+              <p style="font-size: 10px; color: #6b7280; margin: 2px 0;"><b>Clima:</b> ${spot.temperatureC || '-'}ºC · HR ${spot.humidityPercent || '-'}% · viento ${spot.windDirection || '-'} ${spot.windSpeedKmH || 0} km/h${spot.windGustKmH ? ' (ráfagas ' + spot.windGustKmH + ')' : ''}${spot.precipitationMm ? ' · lluvia ' + spot.precipitationMm + 'mm' : ''}</p>
               <p style="font-size: 10px; color: #4b5563; margin-top: 4px; font-style: italic;">${spot.reasoning || ''}</p>
             </div>`
                 : ''
@@ -330,6 +357,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     resources,
     patrols,
     mapLayers,
+    getFirmsWmsBaseUrl,
   ]);
 
   return (

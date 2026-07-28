@@ -265,9 +265,13 @@ export interface SatelliteHotspot {
   confidence: 'nominal' | 'high' | 'low';
   acqDate: string;
   acqTime: string;
-  satellite: 'Aqua' | 'Terra' | 'VIIRS-NPP' | 'NOAA-20';
+  satellite: 'Aqua' | 'Terra' | 'VIIRS-NPP' | 'NOAA-20' | 'NOAA-21' | string;
   frp: number; // Fire Radiative Power (MW)
   municipalityName: string;
+  distanceToMunicipalityKm?: number;
+  scan?: string;
+  version?: string;
+  daynight?: string;
   // Datos de predicción enriquecida por IA
   riskLevel?: 'Bajo' | 'Moderado' | 'Alto' | 'Muy Alto' | 'Extremo';
   spreadDirection?: string;
@@ -276,7 +280,9 @@ export interface SatelliteHotspot {
   temperatureC?: number;
   humidityPercent?: number;
   windSpeedKmH?: number;
+  windGustKmH?: number;
   windDirection?: string;
+  precipitationMm?: number;
   reasoning?: string;
 }
 
@@ -295,5 +301,6 @@ export interface MapLayerState {
   showResources: boolean;
   showPatrols: boolean;
   showRiskZones: boolean;
+  showFirmsWms: boolean;
   tileLayer: 'streets' | 'satellite' | 'terrain';
 }

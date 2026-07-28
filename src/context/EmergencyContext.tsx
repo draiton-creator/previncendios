@@ -120,6 +120,7 @@ const initialMapLayers: MapLayerState = {
   showResources: true,
   showPatrols: true,
   showRiskZones: true,
+  showFirmsWms: true,
   tileLayer: 'streets',
 };
 
@@ -278,8 +279,11 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
       // Solo un usuario real puede crear incidencias oficiales; los demás ven los puntos calientes
       if (user && !isDemoMode) {
+        let created = 0;
         for (const { incident } of detected) {
+          if (!incident) continue;
           await createIncident(incident);
+          created++;
         }
         setLastSatelliteScan(new Date().toISOString());
         if (detected.length > 0) {
@@ -287,7 +291,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
             'ESCANEO_SATELITAL',
             'emergencyEvents',
             'satellite-ai',
-            `Escaneo detectó ${detected.length} focos. Se crearon ${detected.length} incidencias automáticas.`
+            `Escaneo detectó ${detected.length} focos. Se crearon ${created} incidencias automáticas.`
           );
         }
       } else {
@@ -302,14 +306,14 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
-  // Escanear satélite cada 5 minutos, pero esperar a tener el listado real de municipios
+  // Escanear satélite cada 1 minuto, pero esperar a tener el listado real de municipios
   useEffect(() => {
     if (municipalities.length <= 100 || scanInitializedRef.current) return;
     scanInitializedRef.current = true;
     runSatelliteScan();
     const interval = setInterval(() => {
       runSatelliteScan();
-    }, 5 * 60 * 1000);
+    }, 60 * 1000);
     return () => clearInterval(interval);
   }, [municipalities]);
 

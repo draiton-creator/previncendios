@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Layers, Flame, Satellite, Truck, Radio, Eye, Map, Globe, Mountain, RefreshCw } from 'lucide-react';
+import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 
 export const LayerControl: React.FC = () => {
@@ -40,6 +40,19 @@ export const LayerControl: React.FC = () => {
       >
         <Satellite className="h-3.5 w-3.5" />
         <span>Puntos Satélite NASA</span>
+      </button>
+
+      {/* Capa WMS FIRMS (raster NASA) */}
+      <button
+        onClick={() => updateMapLayers({ showFirmsWms: !mapLayers.showFirmsWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showFirmsWms
+            ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/80 dark:text-orange-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Globe className="h-3.5 w-3.5" />
+        <span>Capa FIRMS NASA</span>
       </button>
 
       {/* Recursos */}
