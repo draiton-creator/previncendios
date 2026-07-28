@@ -4,9 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Flame, MapPin, Camera, X, Send, AlertTriangle } from 'lucide-react';
+import { Flame, MapPin, Camera, X, Send, AlertTriangle, Loader2 } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { useAuth } from '../../context/AuthContext';
+import { uploadIncidentPhoto } from '../../services/storageService';
 import { IncidentType, IncidentSeverity } from '../../types';
 
 interface NewIncidentModalProps {
@@ -25,18 +26,41 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({ isOpen, onCl
   const [locationDescription, setLocationDescription] = useState('');
   const [description, setDescription] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [latitude, setLatitude] = useState<number>(user?.currentLocation?.latitude || 40.3801);
   const [longitude, setLongitude] = useState<number>(user?.currentLocation?.longitude || -4.4395);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !locationDescription.trim()) return;
 
+    setUploading(true);
+    setUploadStatus('Subiendo evidencia...');
+
+    let uploadedUrls: string[] = [];
+    if (photoUrl.trim()) uploadedUrls.push(photoUrl.trim());
+
+    if (photoFiles.length > 0) {
+      try {
+        const results = await Promise.all(
+          photoFiles.map((file) => uploadIncidentPhoto(file, user?.uid || 'anonimo'))
+        );
+        uploadedUrls = [...uploadedUrls, ...results.map((r) => r.url)];
+      } catch (err) {
+        console.warn('[Storage] Error subiendo fotos:', err);
+        setUploadStatus('Error al subir algunas fotos. Se creará la incidencia sin ellas.');
+      }
+    }
+
+    setUploading(false);
+
     const selectedMuni = municipalities.find((m) => m.id === municipalityId);
 
-    createIncident({
+    await createIncident({
       title,
       type,
       severity,
@@ -52,9 +76,11 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({ isOpen, onCl
       reportedByName: user?.displayName || 'Ciudadano',
       reportedByRole: user?.role || 'ciudadano',
       source: user?.role === 'voluntario' ? 'voluntario' : 'ciudadano',
-      photoUrls: photoUrl ? [photoUrl] : [],
+      photoUrls: uploadedUrls,
     });
 
+    setUploadStatus(null);
+    setPhotoFiles([]);
     onClose();
   };
 
@@ -188,26 +214,39 @@ export const NewIncidentModal: React.FC<NewIncidentModalProps> = ({ isOpen, onCl
 
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-              URL de Foto de Evidencia (Opcional)
+              Foto de Evidencia (Opcional)
             </label>
             <div className="relative">
               <Camera className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
-                type="url"
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3.5 py-2 text-xs text-gray-900 focus:border-red-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                onChange={(e) => setPhotoFiles(Array.from(e.target.files || []))}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3.5 py-2 text-xs text-gray-900 file:mr-3 file:rounded-lg file:border-0 file:bg-red-100 file:px-2 file:py-1 file:text-xs file:font-bold file:text-red-700 focus:border-red-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:file:bg-red-950 dark:file:text-red-300"
               />
             </div>
+            {photoFiles.length > 0 && (
+              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                {photoFiles.map((f) => f.name).join(', ')}
+              </p>
+            )}
+            {uploadStatus && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400">
+                {uploading && <Loader2 className="h-3 w-3 animate-spin" />}
+                {uploadStatus}
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
-            className="flex w-full items-center justify-center space-x-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-red-600/30 hover:bg-red-700 transition-all"
+            disabled={uploading}
+            className="flex w-full items-center justify-center space-x-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-red-600/30 hover:bg-red-700 transition-all disabled:opacity-60"
           >
-            <Send className="h-4 w-4" />
-            <span>Enviar Notificación Urgente</span>
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <span>{uploading ? 'Subiendo...' : 'Enviar Notificación Urgente'}</span>
           </button>
         </form>
       </div>
