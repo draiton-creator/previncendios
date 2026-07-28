@@ -15,7 +15,7 @@
 
 > 📋 **Configuración rápida**: si aún no tienes un proyecto Firebase vinculado, sigue `docs/FIREBASE_SETUP.md` para crearlo, obtener la configuración y conectar la app.
 
-> ✅ **Progreso reciente**: `AuthContext`, `RegisterModal`, `Header` y `RoleSelectorModal` ya usan Firebase Auth + Firestore. `EmergencyContext` escribe y lee en tiempo real de Firestore. Quedan por ajustar `firestore.rules`, desplegar `firestore.indexes.json` y pulir la gestión de roles institucionales.
+> ✅ **Progreso reciente**: `AuthContext`, `RegisterModal`, `Header` y `RoleSelectorModal` ya usan Firebase Auth + Firestore. `EmergencyContext` escribe y lee en tiempo real de Firestore. Nuevo motor satelital (`src/services/fireDetectionEngine.ts`) descarga datos NASA FIRMS, consulta meteorología OpenWeather, los analiza con Gemini y crea incidencias automáticamente. Quedan por ajustar `firestore.rules`, desplegar `firestore.indexes.json` y pulir la gestión de roles institucionales.
 
 ---
 
@@ -47,6 +47,7 @@
 - ✅ **Layout, login (visual), dashboard, mapa, CRUD de incidencias**.
 - ✅ **Gestión de usuarios y roles**: `AuthContext` usa `onAuthStateChanged`, registro/login con email, Google y cierre de sesión reales. Guarda y lee perfiles de `users` en Firestore.
 - ✅ **Persistencia operativa**: `EmergencyContext` escucha colecciones de Firestore en tiempo real y escribe incidencias, alertas, recursos, solicitudes, bandos, voluntarios, patrullas y logs.
+- ✅ **Motor satelital + IA**: `fireDetectionEngine.ts` descarga puntos calientes de NASA FIRMS, consulta OpenWeather, los analiza con Gemini y crea incidencias automáticamente. Incluye predicción de dirección de propagación basada en viento.
 - ⚠️ **Notificaciones**: Solo banners internos; no hay push ni FCM.
 - ✅ **Reglas e índices de Firestore**: Desplegados correctamente. Reglas permisivas en modo desarrollo; se recomienda endurecerlas antes de producción.
 
