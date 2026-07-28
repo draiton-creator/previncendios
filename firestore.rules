@@ -6,70 +6,125 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function getUserField(field) {
+      return isSignedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data[field]
+        : null;
     }
 
+    function getUserRole() {
+      return getUserField('role');
+    }
+
+    function getUserMunicipality() {
+      return getUserField('municipalityId');
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && getUserRole() == 'superadmin';
+    }
+
+    function isAyuntamiento() {
+      return isSignedIn() && getUserRole() == 'ayuntamiento';
+    }
+
+    function isAyuntamientoOf(muniId) {
+      return isAyuntamiento() && getUserMunicipality() == muniId;
+    }
+
+    function belongsToMunicipality(muniId) {
+      return isSignedIn() && (getUserMunicipality() == muniId || isSuperAdmin());
+    }
+
+    // --- Users ---
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create, update: if isOwner(userId);
-      allow delete: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSuperAdmin() || request.auth.uid == userId;
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Volunteer profiles ---
     match /volunteers/{volunteerId} {
       allow read: if isSignedIn();
-      allow create, update: if isOwner(volunteerId) || isSignedIn();
-      allow delete: if isOwner(volunteerId);
+      allow create: if isSignedIn() && request.auth.uid == resource.data.uid;
+      allow update: if isSuperAdmin() || isAyuntamiento() || request.auth.uid == resource.data.uid;
+      allow delete: if isSuperAdmin() || request.auth.uid == resource.data.uid;
     }
 
+    // --- Emergency events (incidents) ---
     match /emergencyEvents/{eventId} {
       allow read: if true;
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+      allow create: if isSignedIn();
+      allow update: if isSuperAdmin() || isAyuntamientoOf(resource.data.municipalityId);
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Alerts ---
     match /alerts/{alertId} {
       allow read: if true;
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+      allow create: if isSignedIn() && (isSuperAdmin() || isAyuntamiento());
+      allow update: if isSuperAdmin() || isAyuntamientoOf(resource.data.municipalityId);
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Messages (bandos) ---
     match /messages/{messageId} {
       allow read: if true;
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+      allow create: if isSignedIn() && (isSuperAdmin() || isAyuntamiento());
+      allow update: if isSuperAdmin() || isAyuntamientoOf(resource.data.municipalityId);
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Resources ---
     match /resources/{resourceId} {
       allow read: if true;
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+      allow create: if isSignedIn() && (isSuperAdmin() || isAyuntamiento());
+      allow update: if isSuperAdmin() || isAyuntamientoOf(resource.data.municipalityId);
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Resource requests ---
     match /resourceRequests/{requestId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+      allow read: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.requestingMunicipalityId == getUserMunicipality() ||
+        resource.data.targetMunicipalityId == getUserMunicipality()
+      );
+      allow create: if isSignedIn() && (isSuperAdmin() || isAyuntamiento());
+      allow update: if isSuperAdmin() || isAyuntamientoOf(resource.data.targetMunicipalityId);
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Patrol locations ---
     match /patrolLocations/{patrolId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+      allow read: if isSuperAdmin() || isAyuntamiento() || resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.uid == request.auth.uid || isSuperAdmin());
+      allow delete: if isSuperAdmin();
     }
 
+    // --- Activity logs ---
     match /activityLogs/{logId} {
-      allow read: if isSignedIn();
+      allow read: if isSuperAdmin() || isAyuntamiento();
       allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow update, delete: if isSuperAdmin();
     }
 
+    // --- Documents ---
     match /documents/{documentId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow read: if resource.data.isPublic == true || belongsToMunicipality(resource.data.municipalityId);
+      allow create: if isSignedIn() && (isSuperAdmin() || isAyuntamiento());
+      allow update, delete: if isSuperAdmin() || isAyuntamientoOf(resource.data.municipalityId);
     }
 
+    // --- Municipalities ---
+    match /municipalities/{muniId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // --- Deny everything else ---
     match /{document=**} {
       allow read, write: if false;
     }
