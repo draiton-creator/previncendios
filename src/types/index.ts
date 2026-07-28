@@ -283,6 +283,11 @@ export interface SatelliteHotspot {
   windGustKmH?: number;
   windDirection?: string;
   precipitationMm?: number;
+  airQualityIndex?: number;
+  pm2_5?: number;
+  pm10?: number;
+  co?: number;
+  no2?: number;
   reasoning?: string;
 }
 

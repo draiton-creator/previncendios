@@ -66,6 +66,11 @@ export interface WeatherData {
   windDirectionText: string;
   precipitationMm: number;
   fireRiskIndex: number; // 0-100 aproximado
+  airQualityIndex?: number;
+  pm2_5?: number;
+  pm10?: number;
+  co?: number;
+  no2?: number;
 }
 
 export interface FirePrediction {
@@ -343,6 +348,7 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<WeatherData | n
     const hum = Number(c.relative_humidity_2m ?? 30);
     const precip = Number(c.precipitation ?? 0);
     const fireRiskIndex = computeFireRiskIndex(temp, hum, windSpeed, windGust, precip);
+    const air = await fetchOpenMeteoAirQuality(lat, lng);
     return {
       temperatureC: Math.round(temp),
       humidityPercent: Math.round(hum),
@@ -352,9 +358,30 @@ async function fetchOpenMeteo(lat: number, lng: number): Promise<WeatherData | n
       windDirectionText: degToCardinal(windDeg),
       precipitationMm: Math.round(precip * 10) / 10,
       fireRiskIndex,
+      ...air,
     };
   } catch (err) {
     console.warn('[Open-Meteo] error:', err);
+    return null;
+  }
+}
+
+async function fetchOpenMeteoAirQuality(lat: number, lng: number): Promise<Partial<WeatherData> | null> {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=european_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide`;
+    const res = await fetchWithTimeout(url, 10000);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const c = data.current || {};
+    return {
+      airQualityIndex: Number(c.european_aqi ?? -1),
+      pm10: Number(c.pm10 ?? -1),
+      pm2_5: Number(c.pm2_5 ?? -1),
+      co: Number(c.carbon_monoxide ?? -1),
+      no2: Number(c.nitrogen_dioxide ?? -1),
+    };
+  } catch (err) {
+    console.warn('[Open-Meteo Air Quality] error:', err);
     return null;
   }
 }
@@ -384,6 +411,11 @@ async function fetchOpenWeather(lat: number, lng: number): Promise<WeatherData |
       windDirectionText: degToCardinal(windDeg),
       precipitationMm: Math.round(precip * 10) / 10,
       fireRiskIndex,
+      airQualityIndex: -1,
+      pm2_5: -1,
+      pm10: -1,
+      co: -1,
+      no2: -1,
     };
   } catch (err) {
     console.warn('[OpenWeather] error:', err);
@@ -418,6 +450,11 @@ export async function fetchWeatherForLocation(lat: number, lng: number): Promise
         windDirectionText: 'SO',
         precipitationMm: 0,
         fireRiskIndex: 65,
+        airQualityIndex: -1,
+        pm2_5: -1,
+        pm10: -1,
+        co: -1,
+        no2: -1,
       };
     }
     weatherCache.set(key, { ts: Date.now(), data });
@@ -678,6 +715,11 @@ export async function detectFires(
       windGustKmH: weather.windGustKmH,
       windDirection: weather.windDirectionText,
       precipitationMm: weather.precipitationMm,
+      airQualityIndex: weather.airQualityIndex,
+      pm2_5: weather.pm2_5,
+      pm10: weather.pm10,
+      co: weather.co,
+      no2: weather.no2,
       reasoning: prediction.reasoning,
     };
 

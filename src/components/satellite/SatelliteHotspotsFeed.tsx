@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Flame, Satellite, Wind, MapPin, Navigation } from 'lucide-react';
+import { Flame, Satellite, Wind, MapPin, Navigation, Wind as AirIcon } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { useAuth } from '../../context/AuthContext';
 import { SatelliteHotspot } from '../../types';
@@ -131,6 +131,15 @@ export const SatelliteHotspotsFeed: React.FC<SatelliteHotspotsFeedProps> = ({
                     : 'Distancia no disponible'}
                 </span>
               </div>
+              {typeof spot.airQualityIndex === 'number' && spot.airQualityIndex >= 0 && (
+                <div className="col-span-2 flex items-center gap-1">
+                  <AirIcon className="h-3 w-3 text-purple-500" />
+                  <span>
+                    Calidad aire <b>{spot.airQualityIndex}</b>
+                    {spot.pm2_5 != null && spot.pm2_5 >= 0 ? ` · PM2.5 ${Math.round(spot.pm2_5)} µg/m³` : ''}
+                  </span>
+                </div>
+              )}
             </div>
 
             {spot.riskLevel && spot.riskLevel !== 'Bajo' && (

@@ -257,7 +257,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
               <p style="font-size: 11px; color: ${riskColor}; font-weight: bold;">Riesgo: ${spot.riskLevel}</p>
               <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Propagación:</b> ${spot.spreadDirection || '-'} a ${spot.spreadSpeedKmH || 0} km/h</p>
               <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Área estimada:</b> ${spot.affectedAreaHectares || 0} ha</p>
-              <p style="font-size: 10px; color: #6b7280; margin: 2px 0;"><b>Clima:</b> ${spot.temperatureC || '-'}ºC · HR ${spot.humidityPercent || '-'}% · viento ${spot.windDirection || '-'} ${spot.windSpeedKmH || 0} km/h${spot.windGustKmH ? ' (ráfagas ' + spot.windGustKmH + ')' : ''}${spot.precipitationMm ? ' · lluvia ' + spot.precipitationMm + 'mm' : ''}</p>
+              <p style="font-size: 10px; color: #6b7280; margin: 2px 0;"><b>Clima:</b> ${spot.temperatureC || '-'}ºC · HR ${spot.humidityPercent || '-'}% · viento ${spot.windDirection || '-'} ${spot.windSpeedKmH || 0} km/h${spot.windGustKmH ? ' (ráfagas ' + spot.windGustKmH + ')' : ''}${spot.precipitationMm ? ' · lluvia ' + spot.precipitationMm + 'mm' : ''}${typeof spot.airQualityIndex === 'number' && spot.airQualityIndex >= 0 ? ' · Aire AQI ' + spot.airQualityIndex + ' (PM2.5 ' + (spot.pm2_5 ? Math.round(spot.pm2_5) : '-') + ')' : ''}</p>
               <p style="font-size: 10px; color: #4b5563; margin-top: 4px; font-style: italic;">${spot.reasoning || ''}</p>
             </div>`
                 : ''
