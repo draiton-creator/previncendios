@@ -22,14 +22,6 @@ import {
   MapPin,
   FileCheck,
 } from 'lucide-react';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase/config';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole, UserProfile } from '../../types';
 
@@ -39,7 +31,7 @@ interface RegisterModalProps {
 }
 
 export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose }) => {
-  const { updateProfile, loginDemoRole } = useAuth();
+  const { login, register, loginWithGoogle, authError, clearError } = useAuth();
 
   const [mode, setMode] = useState<'register' | 'login'>('register');
   const [selectedRole, setSelectedRole] = useState<UserRole>('ciudadano');
@@ -78,56 +70,21 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     setIsGoogleSubmitting(true);
     setSuccessMessage(null);
     setErrorMessage(null);
+    clearError();
 
     try {
-      const googleProvider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleUser = result.user;
-
-      const uid = googleUser.uid;
-      const userDocRef = doc(db, 'users', uid);
-
-      // Comprobar si ya existe el documento en Firestore
-      const docSnap = await getDoc(userDocRef);
-      let userProfileToSave: UserProfile;
-
-      if (docSnap.exists()) {
-        userProfileToSave = docSnap.data() as UserProfile;
-        setSuccessMessage(`¡Bienvenido de nuevo, ${googleUser.displayName || 'Usuario'}! Sesión iniciada con Google.`);
-      } else {
-        // Crear nuevo perfil según el rol seleccionado
-        userProfileToSave = {
-          uid,
-          email: googleUser.email || `${uid}@gmail.com`,
-          displayName: googleUser.displayName || displayName || 'Usuario Google',
-          role: selectedRole,
-          municipalityId: `muni_${municipalityName.toLowerCase().replace(/\s+/g, '_')}`,
-          municipalityName,
-          province,
-          autonomousCommunity: 'Castilla y León',
-          phone: phone || googleUser.phoneNumber || '+34 600 000 000',
-          geoConsent: true,
-          currentLocation: { latitude: 40.3801, longitude: -4.4395 },
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-        };
-
-        // Guardar en Firestore
-        await setDoc(userDocRef, userProfileToSave, { merge: true });
-        setSuccessMessage(
-          `¡Registro completado con éxito con tu cuenta de Google! Guardado en la colección 'users' de Firestore como ${selectedRole.toUpperCase()}.`
-        );
-      }
-
-      loginDemoRole(userProfileToSave.role, userProfileToSave.municipalityId);
-      updateProfile(userProfileToSave);
-
+      await loginWithGoogle(selectedRole);
+      setSuccessMessage(
+        mode === 'register'
+          ? '¡Registro completado con éxito con tu cuenta de Google!'
+          : '¡Sesión iniciada con Google!'
+      );
       setTimeout(() => {
         onClose();
-      }, 1600);
+      }, 1500);
     } catch (err: any) {
       console.error('Error con Google Auth:', err);
-      setErrorMessage(err.message || 'Error al autenticarse con la cuenta de Google.');
+      setErrorMessage(authError || err.message || 'Error al autenticarse con la cuenta de Google.');
     } finally {
       setIsGoogleSubmitting(false);
     }
@@ -139,23 +96,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     setIsSubmitting(true);
     setSuccessMessage(null);
     setErrorMessage(null);
+    clearError();
 
     try {
-      let uid = `usr-${Date.now()}`;
-      let finalEmail = email;
-
       if (mode === 'register') {
-        try {
-          const cred = await createUserWithEmailAndPassword(auth, email, password);
-          uid = cred.user.uid;
-          finalEmail = cred.user.email || email;
-        } catch (authErr: any) {
-          console.warn('Firebase Auth note:', authErr.message);
-        }
-
-        const newUserProfile: UserProfile = {
-          uid,
-          email: finalEmail,
+        const profileData: Partial<UserProfile> = {
           displayName: displayName || (selectedRole === 'ayuntamiento' ? `Ayuntamiento de ${municipalityName}` : 'Usuario Registrado'),
           role: selectedRole,
           municipalityId: `muni_${municipalityName.toLowerCase().replace(/\s+/g, '_')}`,
@@ -166,28 +111,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
           geoConsent: true,
           currentLocation: { latitude: 40.3801, longitude: -4.4395 },
           isVerified: true,
-          createdAt: new Date().toISOString(),
         };
 
-        // Guardar en la base de datos Firestore
-        const userDocRef = doc(db, 'users', uid);
-        await setDoc(userDocRef, newUserProfile, { merge: true });
-
-        loginDemoRole(selectedRole);
-        updateProfile(newUserProfile);
+        await register(email, password, profileData);
 
         setSuccessMessage(`¡Perfil de ${selectedRole.toUpperCase()} guardado en Firestore y activado correctamente!`);
       } else {
         // Modo Login
-        try {
-          const cred = await signInWithEmailAndPassword(auth, email, password);
-          uid = cred.user.uid;
-        } catch (authErr) {
-          console.warn('Login local demo fallback');
-        }
-
-        loginDemoRole(selectedRole);
-        setSuccessMessage(`¡Sesión iniciada como ${selectedRole.toUpperCase()}!`);
+        await login(email, password);
+        setSuccessMessage(`¡Sesión iniciada correctamente!`);
       }
 
       setTimeout(() => {
@@ -195,7 +127,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       }, 1500);
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || 'Error en el proceso de autenticación.');
+      setErrorMessage(authError || err.message || 'Error en el proceso de autenticación.');
     } finally {
       setIsSubmitting(false);
     }

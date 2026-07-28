@@ -14,7 +14,7 @@ interface RoleSelectorModalProps {
 }
 
 export const RoleSelectorModal: React.FC<RoleSelectorModalProps> = ({ isOpen, onClose }) => {
-  const { role, loginDemoRole } = useAuth();
+  const { user, role, loginDemoRole, isAuthenticated, isDemoMode, logout } = useAuth();
   const { municipalities } = useEmergency();
 
   if (!isOpen) return null;
@@ -113,10 +113,12 @@ export const RoleSelectorModal: React.FC<RoleSelectorModalProps> = ({ isOpen, on
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Shield className="h-6 w-6 text-red-600" />
-              Simulación Operativa por Roles de Usuario
+              {isDemoMode ? 'Simulación Operativa por Roles' : 'Perfil y Rol de Usuario'}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Seleccione un rol para evaluar la interfaz, permisos y mapa interactivo
+              {isDemoMode
+                ? 'Seleccione un rol para evaluar la interfaz, permisos y mapa interactivo'
+                : `Sesión activa: ${user?.displayName || user?.email} (${role.toUpperCase()})`}
             </p>
           </div>
           <button

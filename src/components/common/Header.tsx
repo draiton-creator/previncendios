@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Activity,
   Menu,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenRoleModal,
   onOpenRegisterModal,
 }) => {
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, isAuthenticated, isDemoMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { alerts, activeEmergencyCount } = useEmergency();
 
@@ -129,13 +130,28 @@ export const Header: React.FC<HeaderProps> = ({
           className={`flex items-center space-x-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all hover:shadow-sm ${getRoleBadgeColor(
             role
           )}`}
-          title="Cambiar de Rol de Evaluación"
+          title={isDemoMode ? 'Cambiar de rol de evaluación (modo demo)' : 'Ver perfil y roles'}
         >
           <Shield className="h-3.5 w-3.5" />
-          <span className="hidden md:inline">{getRoleLabel(role)}</span>
+          <span className="hidden md:inline">
+            {getRoleLabel(role)}
+            {isDemoMode && ' · DEMO'}
+          </span>
           <span className="md:hidden">{role.toUpperCase()}</span>
           <ChevronDown className="h-3 w-3" />
         </button>
+
+        {/* Botón Logout */}
+        {isAuthenticated && !isDemoMode && (
+          <button
+            onClick={logout}
+            className="flex items-center space-x-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-all"
+            title="Cerrar sesión"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Salir</span>
+          </button>
+        )}
 
         {/* Botón Cambiar Tema Modo Claro/Oscuro */}
         <button
