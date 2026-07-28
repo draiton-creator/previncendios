@@ -23,9 +23,14 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
   const handlePublicGps = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           setPublicLocation(pos.coords.latitude, pos.coords.longitude);
-          setGpsMessage(`Alerta activada para tu zona (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
+          let notifMsg = '';
+          if ('Notification' in window) {
+            const permission = await Notification.requestPermission();
+            notifMsg = permission === 'granted' ? ' Notificaciones activadas.' : '';
+          }
+          setGpsMessage(`Alerta activada para tu zona (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}).${notifMsg}`);
           setTimeout(() => setGpsMessage(null), 5000);
         },
         () => {

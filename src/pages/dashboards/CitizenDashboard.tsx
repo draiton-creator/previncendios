@@ -92,8 +92,11 @@ export const CitizenDashboard: React.FC<CitizenDashboardProps> = ({
   const handleUpdateGps = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           updateUserLocation(pos.coords.latitude, pos.coords.longitude);
+          if ('Notification' in window) {
+            await Notification.requestPermission();
+          }
           setGpsMessage(`Ubicación actualizada: Lat ${pos.coords.latitude.toFixed(3)}, Lng ${pos.coords.longitude.toFixed(3)}`);
           setTimeout(() => setGpsMessage(null), 4000);
         },
