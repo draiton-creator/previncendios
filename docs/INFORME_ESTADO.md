@@ -13,6 +13,8 @@
 
 **Estado global**: `Prototipo visual y funcional con datos mock; sin persistencia real ni autenticación completa.`
 
+> 📋 **Configuración rápida**: si aún no tienes un proyecto Firebase vinculado, sigue `docs/FIREBASE_SETUP.md` para crearlo, obtener la configuración y conectar la app.
+
 ---
 
 ## 2. Cumplimiento por fases del prompt original
