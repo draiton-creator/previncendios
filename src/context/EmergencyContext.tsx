@@ -6,7 +6,7 @@
  * Mantiene datos de demo/mock como respaldo cuando no hay sesión real.
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import {
   collection,
   doc,
@@ -54,7 +54,7 @@ import {
   initialDocuments,
   initialActivityLogs,
 } from '../services/mockData';
-import { fetchFirmsHotspotsForSpain } from '../services/firmsSatelliteService';
+import { detectFires } from '../services/fireDetectionEngine';
 
 interface EmergencyContextType {
   municipalities: Municipality[];
@@ -100,7 +100,9 @@ interface EmergencyContextType {
   updateVolunteerAvailability: (uid: string, isAvailable: boolean) => Promise<void>;
   updatePatrolLocation: (patrolData: Omit<PatrolLocation, 'id' | 'timestamp'>) => Promise<void>;
   logActivity: (action: string, targetCollection: string, targetDocId: string, details: string) => Promise<void>;
-  refreshSatelliteData: () => Promise<void>;
+  runSatelliteScan: () => Promise<void>;
+  isSatelliteScanning: boolean;
+  lastSatelliteScan: string | null;
 }
 
 const initialFilters: FilterState = {
@@ -162,6 +164,19 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [documents, setDocuments] = useState<DocumentAttachment[]>(initialDocuments);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
   const [satelliteHotspots, setSatelliteHotspots] = useState<SatelliteHotspot[]>([]);
+  const [isSatelliteScanning, setIsSatelliteScanning] = useState<boolean>(false);
+  const [lastSatelliteScan, setLastSatelliteScan] = useState<string | null>(null);
+
+  const incidentsRef = useRef<EmergencyEvent[]>(incidents);
+  const municipalitiesRef = useRef<Municipality[]>(municipalities);
+
+  useEffect(() => {
+    incidentsRef.current = incidents;
+  }, [incidents]);
+
+  useEffect(() => {
+    municipalitiesRef.current = municipalities;
+  }, [municipalities]);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -230,17 +245,42 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
   }, [isDemoMode, user?.municipalityId]);
 
-  // Cargar datos de FIRMS
-  useEffect(() => {
-    fetchFirmsHotspotsForSpain().then((hotspots) => {
-      setSatelliteHotspots(hotspots);
-    });
-  }, []);
-
-  const refreshSatelliteData = async () => {
-    const data = await fetchFirmsHotspotsForSpain();
-    setSatelliteHotspots(data);
+  // Escanear satélite FIRMS, analizar con IA y crear incidencias automáticamente
+  const runSatelliteScan = async () => {
+    if (isSatelliteScanning) return;
+    setIsSatelliteScanning(true);
+    setError(null);
+    try {
+      const detected = await detectFires(municipalitiesRef.current, incidentsRef.current);
+      setSatelliteHotspots(detected.map((d) => d.hotspot));
+      for (const { incident } of detected) {
+        await createIncident(incident);
+      }
+      setLastSatelliteScan(new Date().toISOString());
+      if (detected.length > 0) {
+        await logActivity(
+          'ESCANEO_SATELITAL',
+          'emergencyEvents',
+          'satellite-ai',
+          `Escaneo detectó ${detected.length} focos. Se crearon ${detected.length} incidencias automáticas.`
+        );
+      }
+    } catch (err: any) {
+      console.error('Error escaneo satelital:', err);
+      setError(`Error escaneo satelital: ${err.message}`);
+    } finally {
+      setIsSatelliteScanning(false);
+    }
   };
+
+  // Cargar datos de FIRMS iniciales y cada 5 minutos
+  useEffect(() => {
+    runSatelliteScan();
+    const interval = setInterval(() => {
+      runSatelliteScan();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -312,9 +352,9 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const createIncident = async (incidentData: Omit<EmergencyEvent, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
     const newIncident: EmergencyEvent = {
-      ...incidentData,
       ...getMunicipalityScope(),
-      id: `evt-${Date.now()}`,
+      ...incidentData,
+      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       createdAt: now,
       updatedAt: now,
     };
@@ -623,7 +663,9 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         updateVolunteerAvailability,
         updatePatrolLocation,
         logActivity,
-        refreshSatelliteData,
+        runSatelliteScan,
+        isSatelliteScanning,
+        lastSatelliteScan,
       }}
     >
       {children}

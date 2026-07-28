@@ -1,6 +1,8 @@
 /**
- * Servicio de Integración de Detección Satelital FIRMS (NASA MODIS / VIIRS)
+ * Datos simulados y helpers de respaldo de FIRMS (NASA MODIS / VIIRS)
  * Previncendios España
+ *
+ * La lógica real de descarga y análisis se encuentra en fireDetectionEngine.ts.
  */
 
 import { SatelliteHotspot } from '../types';
@@ -68,11 +70,9 @@ export const mockSatelliteHotspots: SatelliteHotspot[] = [
   },
 ];
 
+/**
+ * @deprecated Usar `detectFires` desde `fireDetectionEngine.ts` para análisis real.
+ */
 export async function fetchFirmsHotspotsForSpain(): Promise<SatelliteHotspot[]> {
-  // Simulación de respuesta de API NASA FIRMS con retardo de red
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockSatelliteHotspots);
-    }, 400);
-  });
+  return Promise.resolve(mockSatelliteHotspots);
 }

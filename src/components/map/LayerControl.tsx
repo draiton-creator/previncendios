@@ -3,11 +3,11 @@
  */
 
 import React from 'react';
-import { Layers, Flame, Satellite, Truck, Radio, Eye, Map, Globe, Mountain } from 'lucide-react';
+import { Layers, Flame, Satellite, Truck, Radio, Eye, Map, Globe, Mountain, RefreshCw } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 
 export const LayerControl: React.FC = () => {
-  const { mapLayers, updateMapLayers } = useEmergency();
+  const { mapLayers, updateMapLayers, runSatelliteScan, isSatelliteScanning, lastSatelliteScan } = useEmergency();
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-2.5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -109,6 +109,28 @@ export const LayerControl: React.FC = () => {
           <span>Relieve</span>
         </button>
       </div>
+
+      <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+
+      <button
+        onClick={runSatelliteScan}
+        disabled={isSatelliteScanning}
+        title="Escanear satélite FIRMS con IA"
+        className={`flex items-center space-x-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+          isSatelliteScanning
+            ? 'bg-amber-100 text-amber-800 animate-pulse'
+            : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300'
+        }`}
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${isSatelliteScanning ? 'animate-spin' : ''}`} />
+        <span>{isSatelliteScanning ? 'Escaneando...' : 'Escanear satélite'}</span>
+      </button>
+
+      {lastSatelliteScan && (
+        <span className="text-[10px] text-gray-500 dark:text-gray-400 hidden md:inline">
+          Último: {new Date(lastSatelliteScan).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      )}
     </div>
   );
 };

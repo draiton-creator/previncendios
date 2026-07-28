@@ -268,6 +268,16 @@ export interface SatelliteHotspot {
   satellite: 'Aqua' | 'Terra' | 'VIIRS-NPP' | 'NOAA-20';
   frp: number; // Fire Radiative Power (MW)
   municipalityName: string;
+  // Datos de predicción enriquecida por IA
+  riskLevel?: 'Bajo' | 'Moderado' | 'Alto' | 'Muy Alto' | 'Extremo';
+  spreadDirection?: string;
+  spreadSpeedKmH?: number;
+  affectedAreaHectares?: number;
+  temperatureC?: number;
+  humidityPercent?: number;
+  windSpeedKmH?: number;
+  windDirection?: string;
+  reasoning?: string;
 }
 
 export interface FilterState {

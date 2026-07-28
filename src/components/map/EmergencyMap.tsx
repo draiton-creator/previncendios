@@ -202,8 +202,17 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         const icon = createCustomMarkerIcon('#eab308', '🛰️');
         const marker = L.marker([spot.latitude, spot.longitude], { icon });
 
+        const riskColor =
+          spot.riskLevel === 'Extremo' || spot.riskLevel === 'Muy Alto'
+            ? '#dc2626'
+            : spot.riskLevel === 'Alto'
+            ? '#f97316'
+            : spot.riskLevel === 'Moderado'
+            ? '#eab308'
+            : '#6b7280';
+
         marker.bindPopup(`
-          <div style="min-width: 200px">
+          <div style="min-width: 220px">
             <span style="background-color: #eab308; color: black; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold;">
               SATÉLITE NASA FIRMS (${spot.satellite})
             </span>
@@ -211,6 +220,18 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
             <p style="font-size: 11px; color: #4b5563;">Municipio: ${spot.municipalityName}</p>
             <p style="font-size: 11px; color: #4b5563;">Potencia Térmica (FRP): <b>${spot.frp} MW</b></p>
             <p style="font-size: 10px; color: #6b7280; margin-top: 4px;">Detección: ${spot.acqDate} ${spot.acqTime} UTC</p>
+            ${
+              spot.riskLevel
+                ? `
+            <div style="margin-top: 8px; padding: 8px; background-color: #fefce8; border-radius: 6px;">
+              <p style="font-size: 11px; color: ${riskColor}; font-weight: bold;">Riesgo IA: ${spot.riskLevel}</p>
+              <p style="font-size: 11px; color: #4b5563;">Propagación: <b>${spot.spreadDirection || '-'}</b> a ${spot.spreadSpeedKmH || 0} km/h</p>
+              <p style="font-size: 11px; color: #4b5563;">Área estimada: ${spot.affectedAreaHectares || 0} ha</p>
+              <p style="font-size: 10px; color: #6b7280; margin-top: 4px;">Viento: ${spot.windDirection || '-'} ${spot.windSpeedKmH || 0} km/h · Temp: ${spot.temperatureC || '-'}ºC · Hum: ${spot.humidityPercent || '-'}%</p>
+              <p style="font-size: 10px; color: #4b5563; margin-top: 4px; font-style: italic;">${spot.reasoning || ''}</p>
+            </div>`
+                : ''
+            }
           </div>
         `);
 
