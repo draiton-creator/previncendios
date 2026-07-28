@@ -24,6 +24,34 @@ const SPAIN_BBOX = {
   maxLat: 43.8,
 };
 
+const CARDINAL_TO_DEG: Record<string, number> = {
+  N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5,
+  S: 180, SSW: 202.5, SW: 225, WSW: 247.5, W: 270, WNW: 292.5, NW: 315, NNW: 337.5,
+};
+
+export function cardinalToDegrees(cardinal: string): number {
+  const key = cardinal.toUpperCase().split(' ')[0];
+  return CARDINAL_TO_DEG[key] ?? 0;
+}
+
+export function destinationPoint(lat: number, lng: number, distanceKm: number, bearingDeg: number) {
+  const R = 6371;
+  const lat1 = toRadians(lat);
+  const lng1 = toRadians(lng);
+  const brng = toRadians(bearingDeg);
+  const d = distanceKm / R;
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng)
+  );
+  const lng2 =
+    lng1 +
+    Math.atan2(
+      Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+    );
+  return { latitude: (lat2 * 180) / Math.PI, longitude: (lng2 * 180) / Math.PI };
+}
+
 export interface WeatherData {
   temperatureC: number;
   humidityPercent: number;

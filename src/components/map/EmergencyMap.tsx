@@ -8,6 +8,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEmergency } from '../../context/EmergencyContext';
 import { EmergencyEvent, SatelliteHotspot, OperationalResource, PatrolLocation } from '../../types';
+import { cardinalToDegrees, destinationPoint } from '../../services/fireDetectionEngine';
 
 interface EmergencyMapProps {
   onSelectIncident?: (incident: EmergencyEvent) => void;
@@ -199,10 +200,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     // 2. DIBUJAR PUNTOS CALIENTES SATELITALES NASA FIRMS
     if (mapLayers.showSatelliteFirms) {
       satelliteHotspots.forEach((spot) => {
-        const icon = createCustomMarkerIcon('#eab308', '🛰️');
-        const marker = L.marker([spot.latitude, spot.longitude], { icon });
-
-        const riskColor =
+        const markerColor =
           spot.riskLevel === 'Extremo' || spot.riskLevel === 'Muy Alto'
             ? '#dc2626'
             : spot.riskLevel === 'Alto'
@@ -210,6 +208,10 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
             : spot.riskLevel === 'Moderado'
             ? '#eab308'
             : '#6b7280';
+        const icon = createCustomMarkerIcon(markerColor, '🛰️');
+        const marker = L.marker([spot.latitude, spot.longitude], { icon });
+
+        const riskColor = markerColor;
 
         marker.bindPopup(`
           <div style="min-width: 220px">
@@ -236,6 +238,33 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         `);
 
         markersLayer.addLayer(marker);
+
+        // Dibujar vector de propagación del fuego basado en viento y análisis de IA
+        if (spot.spreadDirection && spot.spreadSpeedKmH) {
+          const distanceKm = Math.max(0.5, spot.spreadSpeedKmH * 1.5);
+          const bearing = cardinalToDegrees(spot.spreadDirection);
+          const end = destinationPoint(spot.latitude, spot.longitude, distanceKm, bearing);
+          const start = [spot.latitude, spot.longitude] as [number, number];
+          const endPoint = [end.latitude, end.longitude] as [number, number];
+
+          const spreadLine = L.polyline([start, endPoint], {
+            color: riskColor,
+            weight: 3,
+            opacity: 0.85,
+            dashArray: '6, 6',
+          });
+          markersLayer.addLayer(spreadLine);
+
+          const arrowHead = L.circleMarker(endPoint, {
+            radius: 4,
+            fillColor: riskColor,
+            color: '#ffffff',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.9,
+          });
+          markersLayer.addLayer(arrowHead);
+        }
       });
     }
 
