@@ -170,6 +170,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const incidentsRef = useRef<EmergencyEvent[]>(incidents);
   const municipalitiesRef = useRef<Municipality[]>(municipalities);
+  const satelliteHotspotsRef = useRef<SatelliteHotspot[]>([]);
   const isSatelliteScanningRef = useRef<boolean>(false);
   const scanInitializedRef = useRef<boolean>(false);
 
@@ -180,6 +181,10 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   useEffect(() => {
     municipalitiesRef.current = municipalities;
   }, [municipalities]);
+
+  useEffect(() => {
+    satelliteHotspotsRef.current = satelliteHotspots;
+  }, [satelliteHotspots]);
 
   // Cargar listado real de municipios españoles
   useEffect(() => {
@@ -275,7 +280,17 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     setError(null);
     try {
       const detected = await detectFires(municipalitiesRef.current, incidentsRef.current);
-      setSatelliteHotspots(detected.map((d) => d.hotspot));
+      const newHotspots = detected.map((d) => d.hotspot);
+
+      // Solo actualizar estado si realmente cambió el conjunto de focos, evitando re-renderizados del mapa
+      const prevSet = new Set(satelliteHotspotsRef.current.map((h) => h.id));
+      const newSet = new Set(newHotspots.map((h) => h.id));
+      const hasChanges =
+        newSet.size !== prevSet.size ||
+        ![...newSet].every((id) => prevSet.has(id));
+      if (hasChanges) {
+        setSatelliteHotspots(newHotspots);
+      }
 
       // Solo un usuario real puede crear incidencias oficiales; los demás ven los puntos calientes
       if (user && !isDemoMode) {

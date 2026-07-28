@@ -94,6 +94,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         center: [centerLat, centerLng],
         zoom: zoom,
         zoomControl: true,
+        renderer: L.canvas(),
       });
 
       // Capa base predeterminada (Callejero OpenStreetMap)
