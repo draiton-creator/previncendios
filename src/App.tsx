@@ -3,7 +3,7 @@
  * Plataforma Nacional de Prevención y Gestión de Emergencias
  */
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { EmergencyProvider, useEmergency } from './context/EmergencyContext';
@@ -14,20 +14,20 @@ import { RoleSelectorModal } from './components/common/RoleSelectorModal';
 import { AlertBanner } from './components/alerts/AlertBanner';
 import { GeoAlertBanner } from './components/satellite/GeoAlertBanner';
 
-import { SuperAdminDashboard } from './pages/dashboards/SuperAdminDashboard';
-import { MunicipalDashboard } from './pages/dashboards/MunicipalDashboard';
-import { CitizenDashboard } from './pages/dashboards/CitizenDashboard';
-import { GuestDashboard } from './pages/dashboards/GuestDashboard';
+const SuperAdminDashboard = React.lazy(() => import('./pages/dashboards/SuperAdminDashboard'));
+const MunicipalDashboard = React.lazy(() => import('./pages/dashboards/MunicipalDashboard'));
+const CitizenDashboard = React.lazy(() => import('./pages/dashboards/CitizenDashboard'));
+const GuestDashboard = React.lazy(() => import('./pages/dashboards/GuestDashboard'));
 
-import { FullMapPage } from './pages/map/FullMapPage';
-import { IncidentsPage } from './pages/incidents/IncidentsPage';
-import { AlertsPage } from './pages/alerts/AlertsPage';
-import { ResourcesPage } from './pages/resources/ResourcesPage';
-import { VolunteersPage } from './pages/volunteers/VolunteersPage';
-import { CommunicationsPage } from './pages/communications/CommunicationsPage';
-import { DocumentsPage } from './pages/documents/DocumentsPage';
-import { AuditPage } from './pages/audit/AuditPage';
-import { PresentationHome } from './pages/home/PresentationHome';
+const FullMapPage = React.lazy(() => import('./pages/map/FullMapPage'));
+const IncidentsPage = React.lazy(() => import('./pages/incidents/IncidentsPage'));
+const AlertsPage = React.lazy(() => import('./pages/alerts/AlertsPage'));
+const ResourcesPage = React.lazy(() => import('./pages/resources/ResourcesPage'));
+const VolunteersPage = React.lazy(() => import('./pages/volunteers/VolunteersPage'));
+const CommunicationsPage = React.lazy(() => import('./pages/communications/CommunicationsPage'));
+const DocumentsPage = React.lazy(() => import('./pages/documents/DocumentsPage'));
+const AuditPage = React.lazy(() => import('./pages/audit/AuditPage'));
+const PresentationHome = React.lazy(() => import('./pages/home/PresentationHome'));
 
 import { IncidentDetailModal } from './components/incidents/IncidentDetailModal';
 import { NewIncidentModal } from './components/incidents/NewIncidentModal';
@@ -157,7 +157,13 @@ const MainAppContent: React.FC = () => {
 
         {/* Área Principal de Contenido */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl">{renderTabContent()}</div>
+          <Suspense fallback={
+            <div className="flex h-full items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400">
+              Cargando panel...
+            </div>
+          }>
+            <div className="mx-auto max-w-7xl">{renderTabContent()}</div>
+          </Suspense>
         </main>
       </div>
 

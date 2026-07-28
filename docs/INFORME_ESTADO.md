@@ -1,6 +1,6 @@
 # Informe de Estado: Previncendios España
 
-> **Fecha**: 28 de julio de 2026  
+> **Fecha**: 29 de julio de 2026  
 > **Versión del proyecto**: 0.0.0  
 > **Autor**: Revisión técnica automatizada  
 > **Propósito**: Documentar el estado real de la aplicación frente al prompt original, identificar bloqueadores, funcionalidades a medias, módulos completos y proponer un roadmap priorizado para completar la plataforma en sesiones sucesivas.
@@ -9,13 +9,13 @@
 
 ## 1. Resumen ejecutivo
 
-**Previncendios España** es un prototipo funcional de plataforma web para prevención y gestión de incendios y emergencias, construido con React 19, TypeScript, Tailwind 4, Vite 6 y Firebase. La interfaz visual y el mapa operativo están notablemente avanzados, pero el proyecto aún funciona principalmente con datos simulados en memoria. La autenticación real, las reglas de seguridad de Firestore, la persistencia de datos, la PWA y las notificaciones push son áreas críticas pendientes para considerarla lista para producción.
+**Previncendios España** es una plataforma web en desarrollo para prevención y gestión de incendios y emergencias, construida con React 19, TypeScript, Tailwind 4, Vite 6 y Firebase. La interfaz visual, el mapa operativo, el motor satelital FIRMS multi-fuente, la persistencia Firestore en tiempo real y múltiples integraciones externas están funcionales. Quedan pendientes FCM push, Firebase Storage, service worker/PWA offline, code-splitting, tests y endurecimiento final de reglas de seguridad.
 
 **Estado global**: `Prototipo visual y funcional con autenticación real y persistencia Firestore conectadas; datos de respaldo mock para modo demo.`
 
 > 📋 **Configuración rápida**: si aún no tienes un proyecto Firebase vinculado, sigue `docs/FIREBASE_SETUP.md` para crearlo, obtener la configuración y conectar la app.
 
-> ✅ **Progreso reciente**: `AuthContext`, `RegisterModal`, `Header` y `RoleSelectorModal` ya usan Firebase Auth + Firestore. `EmergencyContext` escribe y lee en tiempo real de Firestore. Nuevo motor satelital (`src/services/fireDetectionEngine.ts`) descarga datos NASA FIRMS, consulta meteorología OpenWeather, los analiza con Gemini y crea incidencias automáticamente. Quedan por ajustar `firestore.rules`, desplegar `firestore.indexes.json` y pulir la gestión de roles institucionales.
+> ✅ **Progreso reciente**: `AuthContext`, `RegisterModal`, `Header` y `RoleSelectorModal` usan Firebase Auth + Firestore. `EmergencyContext` escribe y lee en tiempo real de Firestore. Motor satelital (`src/services/fireDetectionEngine.ts`) descarga datos reales NASA FIRMS (VIIRS_NOAA20/SNPP, MODIS), consulta Open-Meteo y OpenWeather, analiza con Gemini y crea incidencias automáticamente. Se añadieron capa WMS de FIRMS, feed público de focos, alertas geolocalizadas para invitados, calidad del aire (Open-Meteo), enlaces Google Maps, avisos AEMET oficiales, botón de emergencia 112, permiso de notificaciones del navegador, y se limpiaron dependencias no usadas. Quedan FCM push, Firebase Storage, PWA/service worker, code-splitting y endurecer `firestore.rules`.
 
 ---
 
@@ -32,13 +32,13 @@
 
 - ✅ **Estructura de carpetas**: Limpia y modular (`src/components/*`, `src/pages/*`, `src/services/*`).
 - ⚠️ **Modelo de datos**: Tipos TypeScript completos, pero Firestore no está poblado ni se lee/escribe en la mayoría de módulos.
-- ❌ **Autenticación real**: `AuthContext` es un simulador con usuarios hardcodeados.
-- ❌ **Reglas de seguridad**: `firestore.rules` es muy permisiva y no separa por municipio/rol.
+- ✅ **Autenticación real**: `AuthContext` usa `onAuthStateChanged` de Firebase Auth, registro/login con email, Google y perfiles en Firestore.
+- ⚠️ **Reglas de seguridad**: `firestore.rules` propuesta incluye control por municipio/rol, pero aún no se despliega como producción.
 
 ### FASE 3 — Diseño de pantallas, rutas, navegación y componentes
 
 - ✅ **Diseño de pantallas**: Dashboards, mapa, incidencias, alertas, recursos, voluntarios, comunicaciones, documentos y auditoría.
-- ❌ **Rutas**: No hay React Router; la navegación es por tabs manejados con `useState` en `App.tsx`.
+- ⚠️ **Rutas**: La navegación sigue por tabs en `App.tsx`; React Router no está implementado.
 - ✅ **Navegación por rol**: Sidebar filtra items por rol.
 - ⚠️ **Componentes**: Reutilizables en parte (`StatCard`, `Badge`), pero hay duplicación de lógica.
 
@@ -48,8 +48,8 @@
 - ✅ **Gestión de usuarios y roles**: `AuthContext` usa `onAuthStateChanged`, registro/login con email, Google y cierre de sesión reales. Guarda y lee perfiles de `users` en Firestore.
 - ✅ **Persistencia operativa**: `EmergencyContext` escucha colecciones de Firestore en tiempo real y escribe incidencias, alertas, recursos, solicitudes, bandos, voluntarios, patrullas y logs.
 - ✅ **Motor satelital + IA**: `fireDetectionEngine.ts` descarga puntos calientes de NASA FIRMS, consulta OpenWeather, los analiza con Gemini y crea incidencias automáticamente. Incluye predicción de dirección de propagación basada en viento.
-- ⚠️ **Notificaciones**: Solo banners internos; no hay push ni FCM.
-- ✅ **Reglas e índices de Firestore**: Desplegados correctamente. Reglas permisivas en modo desarrollo; se recomienda endurecerlas antes de producción.
+- ⚠️ **Notificaciones**: Se implementaron notificaciones del navegador (`Notification API`) para alertas de fuego cercano. Falta Firebase Cloud Messaging (FCM) push real.
+- ⚠️ **Reglas e índices de Firestore**: Existen reglas RBAC por municipio/rol, pendientes de despliegue formal en producción.
 
 ### FASE 5 — Revisión técnica, riesgos, mejoras y producción
 
@@ -92,7 +92,7 @@
 
 **Problemas detectados**:
 
-- `EmergencyContext` mantiene las incidencias en memoria (`useState(initialEmergencyEvents)`).
+- `EmergencyContext` sincroniza incidencias con Firestore en tiempo real y conserva `initialEmergencyEvents` como fallback offline.
 - No hay paginación, ni ordenación avanzada, ni búsqueda geoespacial.
 - Las fotos usan URLs de Unsplash en los datos mock.
 
@@ -102,8 +102,8 @@
 |---------------|--------|------------|
 | Crear alerta | ✅ Implementado | `CreateAlertModal.tsx`. |
 | Desactivar alerta | ✅ Implementado | Botón en `AlertCenter.tsx`. |
-| Filtrar por severidad / tipo | ⚠️ A medias | Solo filtro por municipio. |
-| Notificaciones push | ❌ No implementado | No FCM, no Service Worker. |
+| Filtrar por severidad / tipo | ✅ Implementado | Filtros por municipio, provincia, tipo, severidad, estado y búsqueda. |
+| Notificaciones push | ⚠️ Parcial | `Notification API` del navegador para fuego cercano; FCM/SW pendiente. |
 | Historial de alertas | ✅ Implementado | Lista con estado activo/inactivo. |
 | Plantillas de mensajes | ❌ No implementado | Campos libres, sin plantillas predefinidas. |
 
@@ -113,12 +113,12 @@
 |---------------|--------|------------|
 | Mapa interactivo | ✅ Implementado | Leaflet en `EmergencyMap.tsx`. |
 | Capas de incidencias | ✅ Implementado | Marcadores con severidad y pulso. |
-| Capa FIRMS satelital | ✅ Implementado | Mock en `firmsSatelliteService.ts`. |
+| Capa FIRMS satelital | ✅ Implementado | Datos reales de FIRMS (VIIRS/MODIS) con múltiples fuentes; capa WMS opcional. |
 | Capa de recursos | ✅ Implementado | Marcadores por categoría. |
 | Capa de patrullas | ✅ Implementado | Mock en `mockData.ts`. |
-| Filtros por tipo / estado / distancia | ⚠️ A medias | Filtros por tipo, estado, severidad, municipio y búsqueda textual. Sin distancia real. |
-| Vista pública / operativa | ❌ No implementado | No hay diferenciación de capas por rol. |
-| Google Maps / Mapbox | ❌ No implementado | Usa OpenStreetMap, Esri y OpenTopoMap. |
+| Filtros por tipo / estado / distancia | ✅ Implementado | Filtros por municipio, provincia, tipo, severidad, estado y búsqueda. Distancia real en mapa/alerts como mejora futura. |
+| Vista pública / operativa | ⚠️ A medias | `mapLayers` controla visibilidad de incidencias, focos satelitales, recursos y patrullas; falta geofencing. |
+| Google Maps / Mapbox | ⚠️ A medias | Se añadieron enlaces de navegación Google Maps desde popups y mobilizaciones. Mapa base sigue siendo OSM/Esri/OpenTopoMap. |
 
 **Problemas detectados**:
 
@@ -181,24 +181,21 @@
 src/firebase/config.ts:11 - error TS2339: Property 'env' does not exist on type 'ImportMeta'.
 ```
 
-**Causa**: `tsconfig.json` no incluye los tipos de Vite (`vite/client`).  
-**Impacto**: `npm run lint` falla. Puede romper builds en CI/CD.  
-**Corrección**: Añadir `"types": ["vite/client"]` o `/// <reference types="vite/client" />` en el archivo.
+**Estado**: ✅ Resuelto. `tsconfig.json` incluye `"types": ["vite/client", "node"]` y `tsc --noEmit` pasa.
 
 ### 4.2 Deuda técnica y code smell
 
-- `as any` en `ResourceList.tsx:189` (`e.target.value as any`).
-- Uso de `document.getElementById` dentro de `EmergencyMap.tsx` para asignar eventos a botones de popups de Leaflet (poco idiomático en React).
-- `setIsSidebarOpen(!isSidebarOpen)` dentro de `onClick` sin función estable (puede causar lecturas obsoletas).
-- `index.html` tiene título genérico en inglés (`My Google AI Studio App`) y `lang="en"`.
-- `package.json` nombre del paquete sigue siendo `react-example`.
+- ✅ `as any` en `ResourceList.tsx:189` tipado con `OperationalResource['status']`.
+- ✅ Uso de `document.getElementById` en popups de Leaflet reemplazado por `popupContent.querySelector('button')`.
+- ✅ `setIsSidebarOpen(!isSidebarOpen)` corregido a función estable `setIsSidebarOpen((prev) => !prev)`.
+- ✅ `index.html` título en español y `lang="es"`.
+- ✅ `package.json` renombrado a `previncendios` y limpieza de dependencias no usadas.
 
 ### 4.3 Dependencias
 
-- `@google/genai` incluido pero no se usa en ningún componente/servicio.
-- `express` y `dotenv` en dependencias pero no hay servidor backend real.
-- `tsx` en devDependencies, innecesario para un frontend.
-- Tailwind 4 con `@import "tailwindcss"` requiere configuración específica; debe verificarse que funcione correctamente.
+- ✅ Eliminadas dependencias no usadas: `@google/genai`, `express`, `dotenv`, `tsx`, `@types/express`, `esbuild`.
+- ✅ `vite`, `@vitejs/plugin-react`, `@types/leaflet` movidos a `devDependencies`.
+- ✅ Tailwind 4 con `@import "tailwindcss"` funciona correctamente.
 
 ---
 
@@ -206,9 +203,8 @@ src/firebase/config.ts:11 - error TS2339: Property 'env' does not exist on type 
 
 ### 5.1 Historial de secretos
 
-- Se detectó una API Key de Firebase (`AIzaSyAFJxhZxbd9zANddzEh2nvjMJeBQW_FzG0`) en `firebase-applet-config.json`.
-- Se eliminó del historial de Git con `git filter-branch` y se añadió al `.gitignore`.
-- **Acción pendiente**: rotar la clave en Google Cloud Console, ya que estuvo expuesta.
+- ✅ Se detectó y eliminó del historial la API Key de Firebase expuesta; `.gitignore` actualizado.
+- **Acción pendiente**: rotar la clave en Google Cloud Console si aún no se ha hecho.
 
 ### 5.2 Reglas de Firestore
 
@@ -247,8 +243,8 @@ match /emergencyEvents/{eventId} {
 
 ### 6.1 Persistencia
 
-- El 95% de la lógica usa `useState` con datos mock (`EmergencyContext`).
-- Solo `volunteerProfileService.ts` y `RegisterModal` leen/escriben Firestore.
+- `EmergencyContext` escucha Firestore en tiempo real para la mayoría de colecciones, con `initial*` como fallback offline.
+- `RegisterModal`, `NewIncidentModal`, `ResourceList`, `AlertCenter`, `CreateBandoModal` y otros componentes escriben en Firestore.
 - No hay caché offline, reintentos ni manejo de conectividad intermitente.
 
 ### 6.2 Estructura de datos
@@ -259,22 +255,22 @@ match /emergencyEvents/{eventId} {
 
 ### 6.3 Rendimiento
 
-- No hay lazy loading de componentes; `App.tsx` importa todos los modales y páginas al inicio.
-- `EmergencyMap` recrea todos los marcadores en cada cambio de filtro/layer (OK para prototipo, escala mal).
-- No hay paginación en listas.
+- ⚠️ No hay lazy loading de componentes; `App.tsx` importa todos los modales y páginas al inicio.
+- ✅ `EmergencyMap` usa renderizado Canvas y diff de focos para evitar re-renders innecesarios.
+- ⚠️ No hay paginación en listas.
 
 ### 6.4 Integraciones externas
 
-- FIRMS y AEMET son mocks (`firmsSatelliteService.ts`, `aemetService.ts`).
-- No hay adaptador para APIs reales con claves de entorno.
-- No hay integración con 112/UME más allá de textos en la UI.
+- FIRMS ya consulta datos reales (`fireDetectionEngine.ts`) y AEMET obtiene avisos oficiales desde el RSS del servicio (`aemetService.ts`).
+- Open-Meteo (clima y calidad del aire) y OpenWeather funcionan sin o con clave respectivamente.
+- Enlaces de llamada al 112 y navegación Google Maps disponibles en dashboard y ficha de incidencia.
 
 ### 6.5 Firebase Services faltantes
 
-- Firebase Cloud Messaging (notificaciones push).
+- Firebase Cloud Messaging (notificaciones push real).
 - Firebase Storage (subida de fotos y documentos).
 - Firebase Functions (lógica de servidor para notificaciones y validaciones seguras).
-- Firebase Hosting config (`firebase.json` no existe).
+- ✅ Firebase Hosting configurado y desplegado.
 
 ---
 
@@ -289,19 +285,18 @@ match /emergencyEvents/{eventId} {
 
 ### 7.2 Aspectos a mejorar
 
-- **`index.html`**: título en inglés y sin metadatos de PWA.
+- **`index.html`**: título y metadatos PWA actualizados (`manifest.json`, `theme-color`, `color-scheme`). Falta service worker.
 - **Accesibilidad**: muchos botones carecen de `aria-label` o textos descriptivos.
-- **Idioma**: en general el español es correcto, pero `index.html` y `package.json` contienen textos en inglés.
+- ✅ **Idioma**: `index.html` y `package.json` están en español/correctamente nombrados.
 - **Responsive**: el layout con sidebar fijo puede mejorar en tablets pequeñas.
-- **Estados de carga y error**: no hay skeletons ni mensajes de error cuando Firestore falla.
+- **Estados de carga y error**: se añadieron mensajes de carga y vacío en dashboards; skeletons no implementados.
 - **Formularios**: algunos campos no tienen validación (municipio libre, contraseña sin fortaleza).
 
 ### 7.3 PWA
 
-- No hay `manifest.json`.
-- No hay service worker.
-- No hay iconos para instalación.
-- No hay estrategia de caché offline.
+- `manifest.json` e icono `icon.svg` existen.
+- Service worker no implementado.
+- Estrategia de caché offline no implementada.
 
 ---
 
@@ -619,16 +614,16 @@ service cloud.firestore {
 
 | Requisito | Estado |
 |-----------|--------|
-| TypeScript sin errores (`tsc --noEmit`) | ❌ Falla en `src/firebase/config.ts` |
-| Build de Vite exitoso | ⚠️ No verificado con datos reales |
-| PWA instalable (manifest, SW) | ❌ |
-| Autenticación real y segura | ⚠️ Parcial |
-| Firestore rules RBAC con municipios | ❌ |
-| Persistencia real (no solo mock) | ❌ |
-| Notificaciones push (FCM) | ❌ |
+| TypeScript sin errores (`tsc --noEmit`) | ✅ |
+| Build de Vite exitoso | ✅ |
+| PWA instalable (manifest, SW) | ⚠️ Manifest e icono listos, falta service worker |
+| Autenticación real y segura | ✅ Firebase Auth + perfiles Firestore; falta invitaciones y claims |
+| Firestore rules RBAC con municipios | ⚠️ Reglas propuestas, pendientes de despliegue formal |
+| Persistencia real (no solo mock) | ✅ Firestore en tiempo real con fallback mock |
+| Notificaciones push (FCM) | ⚠️ Notificaciones de navegador activas; FCM pendiente |
 | Subida de archivos (Storage) | ❌ |
-| Integraciones FIRMS/AEMET reales | ❌ |
-| Despliegue en Firebase Hosting/Vercel | ❌ |
+| Integraciones FIRMS/AEMET reales | ✅ FIRMS/Open-Meteo/AEMET RSS; EFFIS/others pendiente |
+| Despliegue en Firebase Hosting/Vercel | ✅ `https://previncendios-espana.web.app` |
 | Tests automáticos | ❌ |
 | CI/CD | ❌ |
 
@@ -636,14 +631,14 @@ service cloud.firestore {
 
 ## 11. Conclusiones y próximos pasos inmediatos
 
-La aplicación tiene una base visual muy sólida, con dashboards diferenciados, mapa operativo, gestión de incidencias, alertas, recursos y comunicaciones. El principal riesgo actual es que **todo funciona en memoria con datos mock**, lo que la mantiene como prototipo. Los bloqueadores críticos para producción son:
+La aplicación ha evolucionado de prototipo funcional a una plataforma con datos reales y persistencia Firestore. Los bloqueadores críticos restantes para producción son:
 
-1. **Corregir el build** (tsconfig + `import.meta.env`).
-2. **Conectar autenticación real** con `onAuthStateChanged`.
-3. **Migrar `EmergencyContext` a Firestore**.
-4. **Reforzar `firestore.rules`** con control por municipio y rol.
-5. **Rotar la API Key de Firebase** expuesta.
-6. **Añadir PWA** (manifest, service worker, iconos).
-7. **Preparar despliegue** (variables de entorno, hosting).
+1. **Firebase Cloud Messaging** para notificaciones push reales (tokens, suscripción por rol/municipio).
+2. **Firebase Storage** para subida de fotos de incidencias y documentos PDF.
+3. **Service worker y estrategia offline** para PWA y caché.
+4. **Code-splitting** y lazy loading de modales/páginas para reducir el bundle (~1.3 MB).
+5. **Despliegue formal de `firestore.rules` e índices** y ajustes de seguridad.
+6. **Tests automáticos** (Vitest) y CI/CD.
+7. **Geofencing, clustering de marcadores y rutas optimizadas**.
 
 El informe debe actualizarse al finalizar cada sesión marcando los items completados del roadmap.
