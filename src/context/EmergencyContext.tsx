@@ -153,7 +153,7 @@ const normalizeFirestoreDates = <T extends Record<string, any>>(data: T): T => {
 export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, isDemoMode } = useAuth();
 
-  const [municipalities] = useState<Municipality[]>(initialMunicipalities);
+  const [municipalities, setMunicipalities] = useState<Municipality[]>(initialMunicipalities);
   const [incidents, setIncidents] = useState<EmergencyEvent[]>(initialEmergencyEvents);
   const [alerts, setAlerts] = useState<EmergencyAlert[]>(initialAlerts);
   const [resources, setResources] = useState<OperationalResource[]>(initialResources);
@@ -169,6 +169,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const incidentsRef = useRef<EmergencyEvent[]>(incidents);
   const municipalitiesRef = useRef<Municipality[]>(municipalities);
+  const isSatelliteScanningRef = useRef<boolean>(false);
+  const scanInitializedRef = useRef<boolean>(false);
 
   useEffect(() => {
     incidentsRef.current = incidents;
@@ -177,6 +179,20 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   useEffect(() => {
     municipalitiesRef.current = municipalities;
   }, [municipalities]);
+
+  // Cargar listado real de municipios españoles
+  useEffect(() => {
+    fetch('/municipios.json')
+      .then((res) => res.json())
+      .then((data: Municipality[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setMunicipalities(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('No se pudo cargar el listado real de municipios:', err);
+      });
+  }, []);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -247,7 +263,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Escanear satélite FIRMS, analizar con IA y crear incidencias automáticamente
   const runSatelliteScan = async () => {
-    if (isSatelliteScanning) return;
+    if (isSatelliteScanningRef.current) return;
+    isSatelliteScanningRef.current = true;
     setIsSatelliteScanning(true);
     setError(null);
     try {
@@ -269,18 +286,21 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
       console.error('Error escaneo satelital:', err);
       setError(`Error escaneo satelital: ${err.message}`);
     } finally {
+      isSatelliteScanningRef.current = false;
       setIsSatelliteScanning(false);
     }
   };
 
-  // Cargar datos de FIRMS iniciales y cada 5 minutos
+  // Escanear satélite cada 5 minutos, pero esperar a tener el listado real de municipios
   useEffect(() => {
+    if (municipalities.length <= 100 || scanInitializedRef.current) return;
+    scanInitializedRef.current = true;
     runSatelliteScan();
     const interval = setInterval(() => {
       runSatelliteScan();
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [municipalities]);
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
