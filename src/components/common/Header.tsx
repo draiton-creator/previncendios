@@ -22,6 +22,11 @@ import { useTheme } from '../../context/ThemeContext';
 import { useEmergency } from '../../context/EmergencyContext';
 import { UserRole } from '../../types';
 
+const hasRealFirms = !!import.meta.env.VITE_FIRMS_API_KEY;
+const hasRealWeather = !!import.meta.env.VITE_OPENWEATHER_API_KEY;
+const hasGemini = !!import.meta.env.VITE_GEMINI_API_KEY;
+const isSimulationMode = !hasRealFirms || !hasRealWeather;
+
 interface HeaderProps {
   onToggleSidebar?: () => void;
   onOpenRoleModal: () => void;
@@ -94,6 +99,14 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-950 dark:text-red-300 sm:inline-block">
                 SISTEMA OPERATIVO
               </span>
+              {isSimulationMode && (
+                <span
+                  className="hidden rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300 sm:inline-block"
+                  title="Datos de FIRMS y/o OpenWeather no configurados. Añade las claves en .env para detección real."
+                >
+                  MODO SIMULACIÓN
+                </span>
+              )}
             </div>
             <p className="hidden text-xs text-gray-500 dark:text-gray-400 sm:block">
               Red Nacional de Coordinación y Alerta Temprana
