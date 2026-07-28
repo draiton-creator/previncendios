@@ -1,0 +1,19 @@
+{
+  "name": "Previncendios España",
+  "short_name": "Previncendios",
+  "description": "Plataforma nacional de prevención y gestión de incendios y emergencias.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "lang": "es",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
