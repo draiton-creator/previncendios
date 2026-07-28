@@ -189,6 +189,14 @@ export const CitizenDashboard: React.FC<CitizenDashboardProps> = ({
               >
                 Ver Ficha
               </button>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${mobilizedIncident.latitude},${mobilizedIncident.longitude}&travelmode=driving`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 shadow-md"
+              >
+                Cómo llegar
+              </a>
               <button
                 onClick={() => toggleMobilization(mobilizedIncident.id)}
                 className="rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700 shadow-md"

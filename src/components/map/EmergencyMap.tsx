@@ -196,9 +196,19 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
             <h4 style="font-weight: 800; font-size: 14px; margin-top: 6px; margin-bottom: 2px;">${inc.title}</h4>
             <p style="font-size: 11px; color: #4b5563; margin-bottom: 8px;">📍 ${inc.locationDescription}</p>
             <p style="font-size: 11px; color: #1f2937; margin-bottom: 8px; line-clamp: 2;">${inc.description}</p>
-            <button style="width: 100%; background-color: #dc2626; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: none;">
-              Ver Ficha de Emergencia
-            </button>
+            <div style="display: flex; gap: 8px;">
+              <button style="flex: 1; background-color: #dc2626; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: none;">
+                Ver Ficha
+              </button>
+              <a
+                href="https://www.google.com/maps/dir/?api=1&destination=${inc.latitude},${inc.longitude}&travelmode=driving"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="flex: 1; background-color: #2563eb; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; text-align: center; display: inline-block;"
+              >
+                Cómo llegar
+              </a>
+            </div>
           </div>
         `;
 
