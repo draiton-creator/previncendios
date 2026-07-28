@@ -33,7 +33,7 @@
 - ✅ **Estructura de carpetas**: Limpia y modular (`src/components/*`, `src/pages/*`, `src/services/*`).
 - ⚠️ **Modelo de datos**: Tipos TypeScript completos, pero Firestore no está poblado ni se lee/escribe en la mayoría de módulos.
 - ✅ **Autenticación real**: `AuthContext` usa `onAuthStateChanged` de Firebase Auth, registro/login con email, Google y perfiles en Firestore.
-- ⚠️ **Reglas de seguridad**: `firestore.rules` propuesta incluye control por municipio/rol, pero aún no se despliega como producción.
+- ✅ **Reglas de seguridad**: `firestore.rules` desplegada con RBAC por municipio/rol (superadmin, ayuntamiento, voluntario, ciudadano).
 
 ### FASE 3 — Diseño de pantallas, rutas, navegación y componentes
 
@@ -49,7 +49,7 @@
 - ✅ **Persistencia operativa**: `EmergencyContext` escucha colecciones de Firestore en tiempo real y escribe incidencias, alertas, recursos, solicitudes, bandos, voluntarios, patrullas y logs.
 - ✅ **Motor satelital + IA**: `fireDetectionEngine.ts` descarga puntos calientes de NASA FIRMS, consulta OpenWeather, los analiza con Gemini y crea incidencias automáticamente. Incluye predicción de dirección de propagación basada en viento.
 - ⚠️ **Notificaciones**: Se implementaron notificaciones del navegador (`Notification API`) para alertas de fuego cercano. Falta Firebase Cloud Messaging (FCM) push real.
-- ⚠️ **Reglas e índices de Firestore**: Existen reglas RBAC por municipio/rol, pendientes de despliegue formal en producción.
+- ✅ **Reglas e índices de Firestore**: Reglas RBAC desplegadas con control por municipio/rol y `storage.rules` para Firebase Storage.
 
 ### FASE 5 — Revisión técnica, riesgos, mejoras y producción
 
@@ -268,7 +268,7 @@ match /emergencyEvents/{eventId} {
 ### 6.5 Firebase Services faltantes
 
 - Firebase Cloud Messaging (notificaciones push real).
-- Firebase Storage (subida de fotos y documentos).
+- ✅ Firebase Storage configurado y desplegado con `storage.rules`.
 - Firebase Functions (lógica de servidor para notificaciones y validaciones seguras).
 - ✅ Firebase Hosting configurado y desplegado.
 
@@ -616,12 +616,12 @@ service cloud.firestore {
 |-----------|--------|
 | TypeScript sin errores (`tsc --noEmit`) | ✅ |
 | Build de Vite exitoso | ✅ |
-| PWA instalable (manifest, SW) | ⚠️ Manifest e icono listos, falta service worker |
+| PWA instalable (manifest, SW) | ✅ Manifest, icono y service worker activos |
 | Autenticación real y segura | ✅ Firebase Auth + perfiles Firestore; falta invitaciones y claims |
-| Firestore rules RBAC con municipios | ⚠️ Reglas propuestas, pendientes de despliegue formal |
+| Firestore rules RBAC con municipios | ✅ Desplegadas con control por municipio/rol |
 | Persistencia real (no solo mock) | ✅ Firestore en tiempo real con fallback mock |
 | Notificaciones push (FCM) | ⚠️ Notificaciones de navegador activas; FCM pendiente |
-| Subida de archivos (Storage) | ❌ |
+| Subida de archivos (Storage) | ✅ Firebase Storage para fotos de incidencias y documentos PDF |
 | Integraciones FIRMS/AEMET reales | ✅ FIRMS/Open-Meteo/AEMET RSS; EFFIS/others pendiente |
 | Despliegue en Firebase Hosting/Vercel | ✅ `https://previncendios-espana.web.app` |
 | Tests automáticos | ❌ |
@@ -634,11 +634,10 @@ service cloud.firestore {
 La aplicación ha evolucionado de prototipo funcional a una plataforma con datos reales y persistencia Firestore. Los bloqueadores críticos restantes para producción son:
 
 1. **Firebase Cloud Messaging** para notificaciones push reales (tokens, suscripción por rol/municipio).
-2. **Firebase Storage** para subida de fotos de incidencias y documentos PDF.
-3. **Service worker y estrategia offline** para PWA y caché.
-4. **Code-splitting** y lazy loading de modales/páginas para reducir el bundle (~1.3 MB).
-5. **Despliegue formal de `firestore.rules` e índices** y ajustes de seguridad.
-6. **Tests automáticos** (Vitest) y CI/CD.
-7. **Geofencing, clustering de marcadores y rutas optimizadas**.
+2. **Tests automáticos** (Vitest) y CI/CD.
+3. **Code-splitting** avanzado con `manualChunks` para reducir el bundle principal (~1 MB).
+4. **Firebase Functions** para validaciones seguras y lógica de servidor.
+5. **Geofencing, clustering de marcadores y rutas optimizadas**.
+6. **Claims personalizados** para superadmin/ayuntamiento y sistema de invitaciones institucionales.
 
 El informe debe actualizarse al finalizar cada sesión marcando los items completados del roadmap.
