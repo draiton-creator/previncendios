@@ -196,7 +196,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
             <h4 style="font-weight: 800; font-size: 14px; margin-top: 6px; margin-bottom: 2px;">${inc.title}</h4>
             <p style="font-size: 11px; color: #4b5563; margin-bottom: 8px;">📍 ${inc.locationDescription}</p>
             <p style="font-size: 11px; color: #1f2937; margin-bottom: 8px; line-clamp: 2;">${inc.description}</p>
-            <button id="btn-inc-${inc.id}" style="width: 100%; background-color: #dc2626; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: none;">
+            <button style="width: 100%; background-color: #dc2626; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; border: none;">
               Ver Ficha de Emergencia
             </button>
           </div>
@@ -205,7 +205,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         marker.bindPopup(popupContent);
 
         marker.on('popupopen', () => {
-          const btn = document.getElementById(`btn-inc-${inc.id}`);
+          const btn = popupContent.querySelector('button');
           if (btn) {
             btn.onclick = () => {
               setSelectedIncident(inc);

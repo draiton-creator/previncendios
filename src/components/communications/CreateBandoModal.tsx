@@ -91,7 +91,7 @@ export const CreateBandoModal: React.FC<CreateBandoModalProps> = ({ isOpen, onCl
               </label>
               <select
                 value={channel}
-                onChange={(e) => setChannel(e.target.value as any)}
+                onChange={(e) => setChannel(e.target.value as typeof channel)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
                 <option value="bando_oficial">Bando Oficial (General)</option>

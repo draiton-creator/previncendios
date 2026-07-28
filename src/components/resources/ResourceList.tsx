@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Truck, Droplet, Tent, Radio, Plus, Send, CheckCircle2, AlertCircle, Building2, MapPin } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { useAuth } from '../../context/AuthContext';
+import { OperationalResource } from '../../types';
 import { Badge } from '../common/Badge';
 
 interface ResourceListProps {
@@ -186,7 +187,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({ onOpenResourceReques
                     <span className="text-[11px] text-gray-400">Cambiar disponibilidad:</span>
                     <select
                       value={res.status}
-                      onChange={(e) => updateResourceStatus(res.id, e.target.value as any)}
+                      onChange={(e) => updateResourceStatus(res.id, e.target.value as OperationalResource['status'])}
                       className="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                     >
                       <option value="disponible">Disponible</option>

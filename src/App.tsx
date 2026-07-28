@@ -141,7 +141,7 @@ const MainAppContent: React.FC = () => {
 
       {/* Header Superior */}
       <Header
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         onOpenRoleModal={() => setIsRoleModalOpen(true)}
         onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
       />
