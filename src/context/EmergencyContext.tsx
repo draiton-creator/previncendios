@@ -204,7 +204,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Escuchar cambios de Firestore en tiempo real
   useEffect(() => {
-    if (isDemoMode || !user) {
+    if (isDemoMode && !!user) {
+      // Usuario en modo demo local: no sincronizamos, usa datos en memoria
       setIsLoading(false);
       return;
     }
@@ -243,18 +244,22 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
       unsubscribers.push(unsub);
     };
 
-    // Colecciones globales
+    // Colecciones públicas: visibles para todo el mundo (incluidos vecinos sin login)
     setupListener<EmergencyEvent>('emergencyEvents', setIncidents);
     setupListener<EmergencyAlert>('alerts', setAlerts);
-    setupListener<OperationalResource>('resources', setResources);
-    setupListener<ResourceRequest>('resourceRequests', setResourceRequests);
-    setupListener<BandoMessage>('messages', setMessages);
-    setupListener<DocumentAttachment>('documents', setDocuments as any);
-    setupListener<ActivityLog>('activityLogs', setActivityLogs);
 
-    // Colecciones filtradas por municipio
-    setupListener<VolunteerProfile>('volunteers', setVolunteers, 'municipalityId', { field: 'municipalityId', value: user.municipalityId });
-    setupListener<PatrolLocation>('patrolLocations', setPatrols, 'timestamp', { field: 'municipalityId', value: user.municipalityId });
+    // Colecciones privadas: solo para usuarios autenticados
+    if (user) {
+      setupListener<OperationalResource>('resources', setResources);
+      setupListener<ResourceRequest>('resourceRequests', setResourceRequests);
+      setupListener<BandoMessage>('messages', setMessages);
+      setupListener<DocumentAttachment>('documents', setDocuments as any);
+      setupListener<ActivityLog>('activityLogs', setActivityLogs);
+
+      // Colecciones filtradas por municipio
+      setupListener<VolunteerProfile>('volunteers', setVolunteers, 'municipalityId', { field: 'municipalityId', value: user.municipalityId });
+      setupListener<PatrolLocation>('patrolLocations', setPatrols, 'timestamp', { field: 'municipalityId', value: user.municipalityId });
+    }
 
     return () => {
       unsubscribers.forEach((unsub) => unsub());
@@ -270,17 +275,23 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     try {
       const detected = await detectFires(municipalitiesRef.current, incidentsRef.current);
       setSatelliteHotspots(detected.map((d) => d.hotspot));
-      for (const { incident } of detected) {
-        await createIncident(incident);
-      }
-      setLastSatelliteScan(new Date().toISOString());
-      if (detected.length > 0) {
-        await logActivity(
-          'ESCANEO_SATELITAL',
-          'emergencyEvents',
-          'satellite-ai',
-          `Escaneo detectó ${detected.length} focos. Se crearon ${detected.length} incidencias automáticas.`
-        );
+
+      // Solo un usuario real puede crear incidencias oficiales; los demás ven los puntos calientes
+      if (user && !isDemoMode) {
+        for (const { incident } of detected) {
+          await createIncident(incident);
+        }
+        setLastSatelliteScan(new Date().toISOString());
+        if (detected.length > 0) {
+          await logActivity(
+            'ESCANEO_SATELITAL',
+            'emergencyEvents',
+            'satellite-ai',
+            `Escaneo detectó ${detected.length} focos. Se crearon ${detected.length} incidencias automáticas.`
+          );
+        }
+      } else {
+        setLastSatelliteScan(new Date().toISOString());
       }
     } catch (err: any) {
       console.error('Error escaneo satelital:', err);
