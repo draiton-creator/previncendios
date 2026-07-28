@@ -11,9 +11,11 @@
 
 **Previncendios España** es un prototipo funcional de plataforma web para prevención y gestión de incendios y emergencias, construido con React 19, TypeScript, Tailwind 4, Vite 6 y Firebase. La interfaz visual y el mapa operativo están notablemente avanzados, pero el proyecto aún funciona principalmente con datos simulados en memoria. La autenticación real, las reglas de seguridad de Firestore, la persistencia de datos, la PWA y las notificaciones push son áreas críticas pendientes para considerarla lista para producción.
 
-**Estado global**: `Prototipo visual y funcional con datos mock; sin persistencia real ni autenticación completa.`
+**Estado global**: `Prototipo visual y funcional con autenticación real y persistencia Firestore conectadas; datos de respaldo mock para modo demo.`
 
 > 📋 **Configuración rápida**: si aún no tienes un proyecto Firebase vinculado, sigue `docs/FIREBASE_SETUP.md` para crearlo, obtener la configuración y conectar la app.
+
+> ✅ **Progreso reciente**: `AuthContext`, `RegisterModal`, `Header` y `RoleSelectorModal` ya usan Firebase Auth + Firestore. `EmergencyContext` escribe y lee en tiempo real de Firestore. Quedan por ajustar `firestore.rules`, desplegar `firestore.indexes.json` y pulir la gestión de roles institucionales.
 
 ---
 
@@ -42,10 +44,11 @@
 
 ### FASE 4 — Implementación real de código base
 
-- ✅ **Layout, login (visual), dashboard, mapa, CRUD de incidencias en memoria**.
-- ⚠️ **Gestión de usuarios y roles**: UI de registro conecta a Firebase Auth, pero el resto de la app no lo consume.
+- ✅ **Layout, login (visual), dashboard, mapa, CRUD de incidencias**.
+- ✅ **Gestión de usuarios y roles**: `AuthContext` usa `onAuthStateChanged`, registro/login con email, Google y cierre de sesión reales. Guarda y lee perfiles de `users` en Firestore.
+- ✅ **Persistencia operativa**: `EmergencyContext` escucha colecciones de Firestore en tiempo real y escribe incidencias, alertas, recursos, solicitudes, bandos, voluntarios, patrullas y logs.
 - ⚠️ **Notificaciones**: Solo banners internos; no hay push ni FCM.
-- ⚠️ **Servicios Firebase**: Inicialización correcta, pero lectura/escritura real limitada.
+- ⚠️ **Reglas e índices de Firestore**: Faltan desplegar las reglas RBAC y los índices compuestos de `firestore.indexes.json`.
 
 ### FASE 5 — Revisión técnica, riesgos, mejoras y producción
 
