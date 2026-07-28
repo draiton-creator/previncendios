@@ -48,7 +48,7 @@
 - ✅ **Gestión de usuarios y roles**: `AuthContext` usa `onAuthStateChanged`, registro/login con email, Google y cierre de sesión reales. Guarda y lee perfiles de `users` en Firestore.
 - ✅ **Persistencia operativa**: `EmergencyContext` escucha colecciones de Firestore en tiempo real y escribe incidencias, alertas, recursos, solicitudes, bandos, voluntarios, patrullas y logs.
 - ⚠️ **Notificaciones**: Solo banners internos; no hay push ni FCM.
-- ⚠️ **Reglas e índices de Firestore**: Faltan desplegar las reglas RBAC y los índices compuestos de `firestore.indexes.json`.
+- ✅ **Reglas e índices de Firestore**: Desplegados correctamente. Reglas permisivas en modo desarrollo; se recomienda endurecerlas antes de producción.
 
 ### FASE 5 — Revisión técnica, riesgos, mejoras y producción
 
