@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil de usuario registrado en la plataforma",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "ayuntamiento", "voluntario", "ciudadano", "invitado"] },
+        "municipalityId": { "type": "string" },
+        "municipalityName": { "type": "string" },
+        "province": { "type": "string" },
+        "phone": { "type": "string" },
+        "collaboratorType": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "VolunteerProfile": {
+      "title": "VolunteerProfile",
+      "description": "Ficha y perfil de voluntario con formación, disponibilidad, vehículos y herramientas",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "userName": { "type": "string" },
+        "municipalityId": { "type": "string" },
+        "municipalityName": { "type": "string" },
+        "province": { "type": "string" },
+        "phone": { "type": "string" },
+        "groupOrAssociation": { "type": "string" },
+        "vehicleType": { "type": "string" },
+        "has4x4": { "type": "boolean" },
+        "hasChainsaw": { "type": "boolean" },
+        "hasWaterPump": { "type": "boolean" },
+        "hasFirstAidCertification": { "type": "boolean" },
+        "epiComplete": { "type": "boolean" },
+        "radioEquipment": { "type": "string" },
+        "actionRadiusKm": { "type": "number" },
+        "isAvailableNow": { "type": "boolean" },
+        "availabilitySchedule": { "type": "string" },
+        "assignedPatrolZone": { "type": "string" },
+        "trainings": { "type": "array" },
+        "trainingHours": { "type": "number" },
+        "vehicleDetails": { "type": "string" },
+        "toolsList": { "type": "array" },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "userName", "municipalityId"]
+    },
+    "EmergencyEvent": {
+      "title": "EmergencyEvent",
+      "description": "Evento o incendio reportado",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "severity": { "type": "string" },
+        "municipalityId": { "type": "string" },
+        "municipalityName": { "type": "string" },
+        "locationDescription": { "type": "string" },
+        "reportedBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "status", "severity", "municipalityId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Colección de perfiles de usuarios registrados"
+    },
+    "/volunteers/{volunteerId}": {
+      "schema": { "$ref": "#/entities/VolunteerProfile" },
+      "description": "Colección de fichas de voluntarios cualificados"
+    },
+    "/emergencyEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/EmergencyEvent" },
+      "description": "Colección de incidencias y emergencias"
+    }
+  }
+}

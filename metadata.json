@@ -1,0 +1,11 @@
+{
+  "name": "Previncendios España",
+  "description": "Plataforma nacional de prevención y gestión de incendios y emergencias para municipios y ciudadanía en España.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
