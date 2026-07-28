@@ -16,6 +16,7 @@ import {
   AlertOctagon,
   Image as ImageIcon,
   Send,
+  Phone,
 } from 'lucide-react';
 import { EmergencyEvent, IncidentStatus, IncidentSeverity } from '../../types';
 import { useEmergency } from '../../context/EmergencyContext';
@@ -66,12 +67,21 @@ export const IncidentDetailModal: React.FC<IncidentDetailModalProps> = ({ incide
               </h2>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="tel:112"
+              className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-red-700"
+            >
+              <Phone className="h-4 w-4" />
+              112
+            </a>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Contenido Principal */}

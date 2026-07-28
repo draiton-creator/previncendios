@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Eye, Shield, MapPin, Info, Flame, Lock, Radio, Navigation } from 'lucide-react';
+import { Eye, Shield, MapPin, Info, Flame, Lock, Radio, Navigation, Phone } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { EmergencyMap } from '../../components/map/EmergencyMap';
 import { SatelliteHotspotsFeed } from '../../components/satellite/SatelliteHotspotsFeed';
@@ -70,6 +70,13 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
               <Navigation className="h-4 w-4" />
               {publicLocation ? 'Actualizar mi ubicación' : 'Alertarme si hay fuego cerca'}
             </button>
+            <a
+              href="tel:112"
+              className="rounded-xl bg-red-700 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-red-800 flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <Phone className="h-4 w-4" />
+              Llamar 112
+            </a>
             <button
               onClick={onOpenRoleModal}
               className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-red-700 shrink-0"
