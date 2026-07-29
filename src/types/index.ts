@@ -337,5 +337,6 @@ export interface MapLayerState {
   showIgnCatastroWms: boolean;
   showAemetPrecipitationWms: boolean;
   showEumetviewWms: boolean;
+  showSentinel3Wms: boolean;
   tileLayer: 'streets' | 'satellite' | 'terrain';
 }

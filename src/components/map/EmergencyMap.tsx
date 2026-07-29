@@ -278,6 +278,19 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
       };
     }
 
+    if (mapLayers.showSentinel3Wms) {
+      overlayConfigs.sentinel3 = {
+        url: 'https://view.eumetsat.int/geoserver/ows',
+        options: {
+          layers: 'copernicus:sentinel3a_slstr_level2_frp',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.9,
+          version: '1.3.0',
+        },
+      };
+    }
+
     Object.entries(overlayConfigs).forEach(([key, { url, options }]) => {
       overlayWmsRef.current[key] = L.tileLayer.wms(url, options).addTo(map);
     });
@@ -290,6 +303,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     mapLayers.showIgnCatastroWms,
     mapLayers.showAemetPrecipitationWms,
     mapLayers.showEumetviewWms,
+    mapLayers.showSentinel3Wms,
   ]);
 
   // Dibujar Marcadores y Capas

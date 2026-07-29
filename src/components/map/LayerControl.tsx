@@ -133,6 +133,19 @@ export const LayerControl: React.FC = () => {
         <span>EUMETView</span>
       </button>
 
+      {/* Capa WMS Sentinel-3 FRP */}
+      <button
+        onClick={() => updateMapLayers({ showSentinel3Wms: !mapLayers.showSentinel3Wms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showSentinel3Wms
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Satellite className="h-3.5 w-3.5" />
+        <span>Sentinel-3</span>
+      </button>
+
       {/* Recursos */}
       <button
         onClick={() => updateMapLayers({ showResources: !mapLayers.showResources })}

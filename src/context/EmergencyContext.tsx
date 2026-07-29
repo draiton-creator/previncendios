@@ -140,6 +140,7 @@ const initialMapLayers: MapLayerState = {
   showIgnCatastroWms: false,
   showAemetPrecipitationWms: false,
   showEumetviewWms: false,
+  showSentinel3Wms: false,
   tileLayer: 'streets',
 };
 
