@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 import { useAuth } from '../../context/AuthContext';
+import { requestNotificationPermission } from '../../services/notificationService';
 import { StatCard } from '../../components/common/StatCard';
 import { EmergencyMap } from '../../components/map/EmergencyMap';
 import { SatelliteHotspotsFeed } from '../../components/satellite/SatelliteHotspotsFeed';
@@ -95,7 +96,10 @@ export const CitizenDashboard: React.FC<CitizenDashboardProps> = ({
         async (pos) => {
           updateUserLocation(pos.coords.latitude, pos.coords.longitude);
           if ('Notification' in window) {
-            await Notification.requestPermission();
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+              await requestNotificationPermission();
+            }
           }
           setGpsMessage(`Ubicación actualizada: Lat ${pos.coords.latitude.toFixed(3)}, Lng ${pos.coords.longitude.toFixed(3)}`);
           setTimeout(() => setGpsMessage(null), 4000);

@@ -42,6 +42,7 @@ import {
   IncidentStatus,
   IncidentType,
   UserRole,
+  AlertSeverity,
 } from '../types';
 import {
   initialMunicipalities,
@@ -57,6 +58,7 @@ import {
 } from '../services/mockData';
 import { detectFires } from '../services/fireDetectionEngine';
 import { fetchAemetAlerts } from '../services/aemetService';
+import { showLocalNotification, hasNotificationPermission } from '../services/notificationService';
 
 interface EmergencyContextType {
   municipalities: Municipality[];
@@ -327,6 +329,46 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         setSatelliteHotspots(newHotspots);
       }
 
+      // Generar alertas automáticas para focos críticos y notificaciones locales
+      const criticalFires = detected.filter(
+        (d) => d.prediction.riskLevel === 'Alto' || d.prediction.riskLevel === 'Muy Alto' || d.prediction.riskLevel === 'Extremo'
+      );
+
+      for (const fire of criticalFires) {
+        const { hotspot, prediction } = fire;
+        const severityMap: Record<'Bajo' | 'Moderado' | 'Alto' | 'Muy Alto' | 'Extremo', AlertSeverity> = {
+          Bajo: 'baja',
+          Moderado: 'baja',
+          Alto: 'media',
+          'Muy Alto': 'alta',
+          Extremo: 'critica',
+        };
+        const alertTitle = `Incendio ${prediction.riskLevel} detectado en ${hotspot.municipalityName}`;
+        const alertMessage = `${hotspot.satellite} · FRP ${hotspot.frp} MW · viento ${prediction.spreadDirection || '-'} ${prediction.spreadSpeedKmH || 0} km/h · área estimada ${prediction.affectedAreaHectares || 0} ha`;
+
+        await createAlert({
+          title: alertTitle,
+          message: alertMessage,
+          type: 'alerta_roja',
+          severity: severityMap[prediction.riskLevel],
+          municipalityId: hotspot.municipalityName ? municipalities.find((m) => m.name === hotspot.municipalityName)?.id || 'desconocido' : 'desconocido',
+          municipalityName: hotspot.municipalityName,
+          radiusKm: 5,
+          issuedByUid: 'system',
+          issuedByName: 'Sistema Satelital IA',
+          emergencyEventId: undefined,
+        });
+
+        if (hasNotificationPermission()) {
+          showLocalNotification({
+            title: alertTitle,
+            body: alertMessage,
+            icon: '/favicon.svg',
+            data: { type: 'incendio_critico', lat: hotspot.latitude, lng: hotspot.longitude },
+          });
+        }
+      }
+
       // Solo un usuario real puede crear incidencias oficiales; los demás ven los puntos calientes
       if (user && !isDemoMode) {
         let created = 0;
@@ -341,7 +383,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
             'ESCANEO_SATELITAL',
             'emergencyEvents',
             'satellite-ai',
-            `Escaneo detectó ${detected.length} focos. Se crearon ${created} incidencias automáticas.`
+            `Escaneo detectó ${detected.length} focos (${criticalFires.length} críticos). Se crearon ${created} incidencias automáticas.`
           );
         }
       } else {

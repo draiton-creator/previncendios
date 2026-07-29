@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { Eye, Shield, MapPin, Info, Flame, Lock, Radio, Navigation, Phone } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
+import { requestNotificationPermission } from '../../services/notificationService';
 import { EmergencyMap } from '../../components/map/EmergencyMap';
 import { SatelliteHotspotsFeed } from '../../components/satellite/SatelliteHotspotsFeed';
 
@@ -28,7 +29,10 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
           let notifMsg = '';
           if ('Notification' in window) {
             const permission = await Notification.requestPermission();
-            notifMsg = permission === 'granted' ? ' Notificaciones activadas.' : '';
+            if (permission === 'granted') {
+              await requestNotificationPermission();
+              notifMsg = ' Notificaciones activadas.';
+            }
           }
           setGpsMessage(`Alerta activada para tu zona (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}).${notifMsg}`);
           setTimeout(() => setGpsMessage(null), 5000);
