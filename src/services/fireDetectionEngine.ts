@@ -15,6 +15,7 @@ import { fetchGoesHotspots } from './goesService';
 import { EffisData, fetchEffisFWI, estimateEffisFromWeather } from './effisService';
 import { getNBRValueForHotspot, analyzeHotspotWithGeminiVision } from './sentinelService';
 import { fetchAemetWeatherData } from './aemetService';
+import { getSeviriFRP, SeviriFRPData } from './seviriService';
 
 const FIRMS_API_KEY = import.meta.env.VITE_FIRMS_API_KEY as string | undefined;
 const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY as string | undefined;
@@ -101,6 +102,9 @@ export interface FirePrediction {
   sentinelNBR?: number;
   nbrConfirmedFire?: boolean;
   aemetFireRiskLevel?: 'Bajo' | 'Moderado' | 'Alto' | 'Muy Alto' | 'Extremo';
+  seviriFRP?: number;
+  seviriConfidence?: number;
+  seviriConfirmed?: boolean;
 }
 
 export interface DetectedFire {
@@ -556,6 +560,9 @@ function buildFirePrediction(
     sentinelNBR: partial.sentinelNBR,
     nbrConfirmedFire: partial.nbrConfirmedFire,
     aemetFireRiskLevel: partial.aemetFireRiskLevel,
+    seviriFRP: partial.seviriFRP,
+    seviriConfidence: partial.seviriConfidence,
+    seviriConfirmed: partial.seviriConfirmed,
   };
 }
 
@@ -563,13 +570,21 @@ function predictFireDeterministic(
   hotspot: Omit<SatelliteHotspot, 'id' | 'municipalityName'>,
   weather: WeatherData,
   effisData?: EffisData | null,
-  aemetFireRiskLevel?: FirePrediction['aemetFireRiskLevel'] | null
+  aemetFireRiskLevel?: FirePrediction['aemetFireRiskLevel'] | null,
+  seviriData?: SeviriFRPData | null
 ): FirePrediction {
   const effisFwi = effisData?.fwi ?? 0;
   const effisBonus = effisFwi > 50 ? 30 : effisFwi > 40 ? 15 : effisFwi > 30 ? 5 : 0;
 
   const aemetBonus =
     aemetFireRiskLevel === 'Extremo' ? 25 : aemetFireRiskLevel === 'Muy Alto' ? 15 : aemetFireRiskLevel === 'Alto' ? 5 : 0;
+
+  const seviriBonus =
+    seviriData && seviriData.frp > 0
+      ? seviriData.fireConfidence > 50
+        ? 20
+        : 10
+      : 0;
 
   const fireScore =
     hotspot.frp * 2 +
@@ -580,7 +595,8 @@ function predictFireDeterministic(
     weather.precipitationMm * 10 +
     (hotspot.confidence === 'high' ? 20 : hotspot.confidence === 'low' ? -10 : 0) +
     effisBonus +
-    aemetBonus;
+    aemetBonus +
+    seviriBonus;
 
   let riskLevel: FirePrediction['riskLevel'] = 'Bajo';
   if (fireScore > 130) riskLevel = 'Extremo';
@@ -610,6 +626,10 @@ function predictFireDeterministic(
     ? ` Riesgo de incendio AEMET: ${aemetFireRiskLevel}.`
     : '';
 
+  const seviriText = seviriData
+    ? ` SEVIRI FRP ${seviriData.frp.toFixed(1)} MW (confianza ${seviriData.fireConfidence.toFixed(0)}%).`
+    : '';
+
   return buildFirePrediction(
     {
       spreadDirection: weather.windDirectionText,
@@ -617,9 +637,12 @@ function predictFireDeterministic(
       affectedAreaHectares,
       riskLevel,
       confidence: hotspot.confidence,
-      reasoning: `${hotspot.satellite}: FRP ${hotspot.frp} MW, brillo ${hotspot.brightness} K, confianza ${hotspot.confidence}. Clima ${weather.temperatureC}°C / HR ${weather.humidityPercent}% / viento ${weather.windDirectionText} ${weather.windSpeedKmH} km/h (ráfagas ${weather.windGustKmH}) / lluvia ${weather.precipitationMm} mm.${effisText}${aemetText} Riesgo ${riskLevel}.`,
+      reasoning: `${hotspot.satellite}: FRP ${hotspot.frp} MW, brillo ${hotspot.brightness} K, confianza ${hotspot.confidence}. Clima ${weather.temperatureC}°C / HR ${weather.humidityPercent}% / viento ${weather.windDirectionText} ${weather.windSpeedKmH} km/h (ráfagas ${weather.windGustKmH}) / lluvia ${weather.precipitationMm} mm.${effisText}${aemetText}${seviriText} Riesgo ${riskLevel}.`,
       effisData: effisData || undefined,
       aemetFireRiskLevel: aemetFireRiskLevel || undefined,
+      seviriFRP: seviriData?.frp,
+      seviriConfidence: seviriData?.fireConfidence,
+      seviriConfirmed: seviriData ? seviriData.frp > 0 && seviriData.fireConfidence > 30 : undefined,
     },
     effisData
   );
@@ -630,9 +653,10 @@ async function predictFireWithGemini(
   weather: WeatherData,
   effisData?: EffisData | null,
   sentinelNBR?: number | null,
-  aemetFireRiskLevel?: FirePrediction['aemetFireRiskLevel'] | null
+  aemetFireRiskLevel?: FirePrediction['aemetFireRiskLevel'] | null,
+  seviriData?: SeviriFRPData | null
 ): Promise<FirePrediction> {
-  if (!GEMINI_API_KEY) return predictFireDeterministic(hotspot, weather, effisData, aemetFireRiskLevel);
+  if (!GEMINI_API_KEY) return predictFireDeterministic(hotspot, weather, effisData, aemetFireRiskLevel, seviriData);
 
   const effisText = effisData
     ? `\n- FWI EFFIS/Copernicus: ${effisData.fwi} (${effisData.dangerClass})
@@ -655,6 +679,14 @@ async function predictFireWithGemini(
     ? `\n- Riesgo de incendio oficial AEMET: ${aemetFireRiskLevel}\n`
     : '';
 
+  const seviriText = seviriData
+    ? `\n- SEVIRI (Meteosat Second Generation, geoestacionario, 15 min): FRP ${seviriData.frp.toFixed(1)} MW, confianza ${seviriData.fireConfidence.toFixed(0)}%, píxel ~3 km. ${
+        seviriData.frp > 0 && seviriData.fireConfidence > 30
+          ? 'Fuego confirmado por satélite geoestacionario europeo.'
+          : 'Sin detección explícita en SEVIRI.'
+      }\n`
+    : '';
+
   const prompt = `Eres un experto en detección de incendios forestales en España.
 Analiza el siguiente punto caliente detectado por satélite y los datos meteorológicos:
 - Latitud: ${hotspot.latitude}
@@ -667,7 +699,7 @@ Analiza el siguiente punto caliente detectado por satélite y los datos meteorol
 - Humedad: ${weather.humidityPercent}%
 - Viento: ${weather.windSpeedKmH} km/h desde dirección ${weather.windDirectionText} (${weather.windDirectionDeg}º)
 - Ráfagas: ${weather.windGustKmH} km/h
-- Lluvia última hora: ${weather.precipitationMm} mm${effisText}${nbrText}${aemetText}
+- Lluvia última hora: ${weather.precipitationMm} mm${effisText}${nbrText}${aemetText}${seviriText}
 
 Responde ÚNICAMENTE con un JSON válido sin markdown:
 {
@@ -722,6 +754,9 @@ Responde ÚNICAMENTE con un JSON válido sin markdown:
           effisData: effisData || undefined,
           sentinelNBR: sentinelNBR ?? undefined,
           aemetFireRiskLevel: aemetFireRiskLevel || undefined,
+          seviriFRP: seviriData?.frp,
+          seviriConfidence: seviriData?.fireConfidence,
+          seviriConfirmed: seviriData ? seviriData.frp > 0 && seviriData.fireConfidence > 30 : undefined,
         },
         effisData
       );
@@ -760,12 +795,15 @@ Responde ÚNICAMENTE con un JSON válido sin markdown:
         sentinelNBR: sentinelNBR ?? undefined,
         nbrConfirmedFire: sentinelNBR !== undefined && sentinelNBR !== null ? sentinelNBR < -0.3 : undefined,
         aemetFireRiskLevel: aemetFireRiskLevel || undefined,
+        seviriFRP: seviriData?.frp,
+        seviriConfidence: seviriData?.fireConfidence,
+        seviriConfirmed: seviriData ? seviriData.frp > 0 && seviriData.fireConfidence > 30 : undefined,
       },
       effisData
     );
   } catch (err) {
     console.warn('[Gemini] Error llamando al modelo:', err);
-    return predictFireDeterministic(hotspot, weather, effisData, aemetFireRiskLevel);
+    return predictFireDeterministic(hotspot, weather, effisData, aemetFireRiskLevel, seviriData);
   }
 }
 
@@ -841,6 +879,7 @@ export async function detectFires(
     effisData: EffisData | null;
     sentinelNBR: number | null;
     aemetFireRiskLevel: FirePrediction['aemetFireRiskLevel'] | null;
+    seviriData: SeviriFRPData | null;
     prediction: FirePrediction | null;
   };
   const enriched: Enriched[] = [];
@@ -858,13 +897,14 @@ export async function detectFires(
     });
     if (isDuplicate) continue;
 
-    enriched.push({ raw, municipality, distanceKm, weather: null, effisData: null, sentinelNBR: null, aemetFireRiskLevel: null, prediction: null });
+    enriched.push({ raw, municipality, distanceKm, weather: null, effisData: null, sentinelNBR: null, aemetFireRiskLevel: null, seviriData: null, prediction: null });
   }
 
   // Obtener clima, EFFIS y riesgo AEMET en paralelo con concurrencia controlada
   const weatherList = new Array<WeatherData>(enriched.length);
   const effisList = new Array<EffisData | null>(enriched.length);
   const aemetRiskList = new Array<FirePrediction['aemetFireRiskLevel']>(enriched.length);
+  const seviriList = new Array<SeviriFRPData | null>(enriched.length);
   await runInBatches(
     enriched.map((e, i) => ({ e, i })),
     WEATHER_CONCURRENCY,
@@ -875,6 +915,13 @@ export async function detectFires(
       ]);
       weatherList[i] = weather;
       effisList[i] = effisData;
+
+      try {
+        seviriList[i] = await getSeviriFRP(e.raw.latitude, e.raw.longitude);
+      } catch (err) {
+        console.warn('[detectFires] SEVIRI no disponible para', e.raw.latitude, e.raw.longitude, err);
+        seviriList[i] = null;
+      }
 
       // Riesgo AEMET por municipio (solo si está dentro del alcance)
       if (e.municipality) {
@@ -895,7 +942,8 @@ export async function detectFires(
     item.weather = weatherList[i];
     item.effisData = effisList[i];
     item.aemetFireRiskLevel = aemetRiskList[i];
-    item.prediction = predictFireDeterministic(item.raw, item.weather, item.effisData, item.aemetFireRiskLevel);
+    item.seviriData = seviriList[i];
+    item.prediction = predictFireDeterministic(item.raw, item.weather, item.effisData, item.aemetFireRiskLevel, item.seviriData);
   });
 
   // Enriquecer los focos más intensos con Gemini (top N)
@@ -922,7 +970,7 @@ export async function detectFires(
       }
     }
 
-    item.prediction = await predictFireWithGemini(item.raw, item.weather, item.effisData, item.sentinelNBR, item.aemetFireRiskLevel);
+    item.prediction = await predictFireWithGemini(item.raw, item.weather, item.effisData, item.sentinelNBR, item.aemetFireRiskLevel, item.seviriData);
   });
 
   const results: DetectedFire[] = [];
@@ -958,6 +1006,9 @@ export async function detectFires(
       co: weather.co,
       no2: weather.no2,
       reasoning: prediction.reasoning,
+      seviriFRP: prediction.seviriFRP,
+      seviriConfidence: prediction.seviriConfidence,
+      seviriConfirmed: prediction.seviriConfirmed,
     };
 
     const riskText = prediction.riskLevel;

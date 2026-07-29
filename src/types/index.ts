@@ -301,6 +301,10 @@ export interface SatelliteHotspot {
   co?: number;
   no2?: number;
   reasoning?: string;
+  // Datos SEVIRI (Meteosat Second Generation)
+  seviriFRP?: number;
+  seviriConfidence?: number;
+  seviriConfirmed?: boolean;
 }
 
 export interface FilterState {
