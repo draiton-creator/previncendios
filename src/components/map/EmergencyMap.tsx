@@ -64,6 +64,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     satelliteHotspots,
     resources,
     patrols,
+    cameras,
     mapLayers,
     filters,
     setSelectedIncident,
@@ -513,11 +514,34 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         markersLayer.addLayer(marker);
       });
     }
+
+    // 5. DIBUJAR CÁMARAS PÚBLICAS
+    if (mapLayers.showCameras) {
+      cameras.forEach((cam) => {
+        const color = cam.status === 'alert' ? '#dc2626' : '#0d9488';
+        const icon = createCustomMarkerIcon(color, '📹');
+        const marker = L.marker([cam.latitude, cam.longitude], { icon });
+
+        marker.bindPopup(`
+          <div style="min-width: 240px;">
+            <span style="background-color: ${color}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold;">
+              CÁMARA ${cam.status === 'alert' ? '· ALERTA' : '· ACTIVA'}
+            </span>
+            <h4 style="font-weight: 700; font-size: 13px; margin-top: 6px;">${cam.name}</h4>
+            <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Fuente:</b> ${cam.source.toUpperCase()}</p>
+            ${cam.webUrl ? `<a href="${cam.webUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top: 8px; background-color: #0d9488; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;">Ver fuente</a>` : ''}
+          </div>
+        `);
+
+        markersLayer.addLayer(marker);
+      });
+    }
   }, [
     filteredIncidents,
     satelliteHotspots,
     resources,
     patrols,
+    cameras,
     mapLayers,
     getFirmsWmsBaseUrl,
   ]);

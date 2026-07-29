@@ -323,6 +323,19 @@ export interface FilterState {
   showOnlyConfirmed: boolean;
 }
 
+export interface Camera {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  source: 'lapalma' | 'dgt' | 'euskadi' | 'custom';
+  streamUrl?: string;
+  imageUrl?: string;
+  webUrl?: string;
+  status?: 'active' | 'inactive' | 'alert';
+  lastUpdate?: string;
+}
+
 export interface MapLayerState {
   showIncidents: boolean;
   showSatelliteFirms: boolean;
@@ -330,6 +343,7 @@ export interface MapLayerState {
   showPatrols: boolean;
   showRiskZones: boolean;
   showFirmsWms: boolean;
+  showCameras: boolean;
   // Capas WMS adicionales
   showEffisWms: boolean;
   showSeviriWms: boolean;

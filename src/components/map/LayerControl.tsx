@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw, ShieldAlert, CloudRain, MapPinned } from 'lucide-react';
+import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw, ShieldAlert, CloudRain, MapPinned, Video } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 
 export const LayerControl: React.FC = () => {
@@ -27,6 +27,19 @@ export const LayerControl: React.FC = () => {
       >
         <Flame className="h-3.5 w-3.5" />
         <span>Incidencias</span>
+      </button>
+
+      {/* Cámaras Públicas */}
+      <button
+        onClick={() => updateMapLayers({ showCameras: !mapLayers.showCameras })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showCameras
+            ? 'bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Video className="h-3.5 w-3.5" />
+        <span>Cámaras</span>
       </button>
 
       {/* Satélite FIRMS NASA */}

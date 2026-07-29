@@ -38,6 +38,7 @@ import {
   SatelliteHotspot,
   FilterState,
   MapLayerState,
+  Camera,
   IncidentSeverity,
   IncidentStatus,
   IncidentType,
@@ -59,6 +60,7 @@ import {
 import { detectFires } from '../services/fireDetectionEngine';
 import { fetchAemetAlerts } from '../services/aemetService';
 import { showLocalNotification, hasNotificationPermission } from '../services/notificationService';
+import { fetchPublicCameras } from '../services/cameraService';
 
 interface EmergencyContextType {
   municipalities: Municipality[];
@@ -73,6 +75,7 @@ interface EmergencyContextType {
   activityLogs: ActivityLog[];
   satelliteHotspots: SatelliteHotspot[];
   aemetAlerts: AemetAlert[];
+  cameras: Camera[];
 
   // Geolocalización pública para alertas sin registro
   publicLocation: { latitude: number; longitude: number } | null;
@@ -136,6 +139,7 @@ const initialMapLayers: MapLayerState = {
   showPatrols: true,
   showRiskZones: true,
   showFirmsWms: true,
+  showCameras: true,
   showEffisWms: false,
   showSeviriWms: false,
   showEffisFwiWms: false,
@@ -188,6 +192,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
   const [satelliteHotspots, setSatelliteHotspots] = useState<SatelliteHotspot[]>([]);
   const [aemetAlerts, setAemetAlerts] = useState<AemetAlert[]>([]);
+  const [cameras, setCameras] = useState<Camera[]>([]);
   const [publicLocation, setPublicLocationState] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSatelliteScanning, setIsSatelliteScanning] = useState<boolean>(false);
   const [lastSatelliteScan, setLastSatelliteScan] = useState<string | null>(null);
@@ -215,6 +220,13 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     fetchAemetAlerts()
       .then((alerts) => setAemetAlerts(alerts))
       .catch((err) => console.warn('Error cargando avisos AEMET:', err));
+  }, []);
+
+  // Cargar cámaras públicas
+  useEffect(() => {
+    fetchPublicCameras()
+      .then((cams) => setCameras(cams))
+      .catch((err) => console.warn('Error cargando cámaras:', err));
   }, []);
 
   // Cargar listado real de municipios españoles
@@ -771,6 +783,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         activityLogs,
         satelliteHotspots,
         aemetAlerts,
+        cameras,
         publicLocation,
         setPublicLocation,
         isLoading,
