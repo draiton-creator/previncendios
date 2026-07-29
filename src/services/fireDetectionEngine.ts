@@ -13,6 +13,7 @@ import { EmergencyEvent, Municipality, SatelliteHotspot } from '../types';
 import { mockSatelliteHotspots } from './firmsSatelliteService';
 import { fetchGoesHotspots } from './goesService';
 import { EffisData, fetchEffisFWI, estimateEffisFromWeather } from './effisService';
+import { getNBRValueForHotspot, analyzeHotspotWithGeminiVision } from './sentinelService';
 
 const FIRMS_API_KEY = import.meta.env.VITE_FIRMS_API_KEY as string | undefined;
 const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY as string | undefined;
@@ -96,6 +97,8 @@ export interface FirePrediction {
   reasoning: string;
   urgentAlertRequired: boolean;
   effisData?: EffisData;
+  sentinelNBR?: number;
+  nbrConfirmedFire?: boolean;
 }
 
 export interface DetectedFire {
@@ -548,6 +551,8 @@ function buildFirePrediction(
     reasoning: partial.reasoning ?? 'Análisis sin detalle.',
     urgentAlertRequired: partial.urgentAlertRequired ?? ['Alto', 'Muy Alto', 'Extremo'].includes(riskLevel),
     effisData: partial.effisData ?? (effisData || undefined),
+    sentinelNBR: partial.sentinelNBR,
+    nbrConfirmedFire: partial.nbrConfirmedFire,
   };
 }
 
@@ -607,7 +612,8 @@ function predictFireDeterministic(
 async function predictFireWithGemini(
   hotspot: Omit<SatelliteHotspot, 'id' | 'municipalityName'>,
   weather: WeatherData,
-  effisData?: EffisData | null
+  effisData?: EffisData | null,
+  sentinelNBR?: number | null
 ): Promise<FirePrediction> {
   if (!GEMINI_API_KEY) return predictFireDeterministic(hotspot, weather, effisData);
 
@@ -616,6 +622,17 @@ async function predictFireWithGemini(
 - ISI: ${effisData.isi}
 - BUI: ${effisData.bui}\n`
     : '';
+
+  const nbrText =
+    sentinelNBR !== undefined && sentinelNBR !== null
+      ? `\n- Índice NBR Sentinel-2: ${sentinelNBR.toFixed(3)} ${
+          sentinelNBR < -0.3
+            ? '🔴 QUEMA ACTIVA CONFIRMADA POR IMAGEN MULTIESPECTRAL'
+            : sentinelNBR < 0
+              ? '🟡 Posible vegetación estresada o quema incipiente'
+              : '🟢 Vegetación sana — revisar si es anomalía térmica industrial'
+        }\n`
+      : '';
 
   const prompt = `Eres un experto en detección de incendios forestales en España.
 Analiza el siguiente punto caliente detectado por satélite y los datos meteorológicos:
@@ -629,7 +646,7 @@ Analiza el siguiente punto caliente detectado por satélite y los datos meteorol
 - Humedad: ${weather.humidityPercent}%
 - Viento: ${weather.windSpeedKmH} km/h desde dirección ${weather.windDirectionText} (${weather.windDirectionDeg}º)
 - Ráfagas: ${weather.windGustKmH} km/h
-- Lluvia última hora: ${weather.precipitationMm} mm${effisText}
+- Lluvia última hora: ${weather.precipitationMm} mm${effisText}${nbrText}
 
 Responde ÚNICAMENTE con un JSON válido sin markdown:
 {
@@ -682,6 +699,7 @@ Responde ÚNICAMENTE con un JSON válido sin markdown:
           confidence: 'low',
           reasoning: 'El modelo no considera este punto caliente como un incendio activo.',
           effisData: effisData || undefined,
+          sentinelNBR: sentinelNBR ?? undefined,
         },
         effisData
       );
@@ -714,6 +732,8 @@ Responde ÚNICAMENTE con un JSON válido sin markdown:
         reasoning: parsed.reasoning || 'Análisis realizado por Gemini.',
         urgentAlertRequired: parsed.urgentAlertRequired,
         effisData: effisData || undefined,
+        sentinelNBR: sentinelNBR ?? undefined,
+        nbrConfirmedFire: sentinelNBR !== undefined && sentinelNBR !== null ? sentinelNBR < -0.3 : undefined,
       },
       effisData
     );
@@ -793,6 +813,7 @@ export async function detectFires(
     distanceKm: number;
     weather: WeatherData | null;
     effisData: EffisData | null;
+    sentinelNBR: number | null;
     prediction: FirePrediction | null;
   };
   const enriched: Enriched[] = [];
@@ -810,7 +831,7 @@ export async function detectFires(
     });
     if (isDuplicate) continue;
 
-    enriched.push({ raw, municipality, distanceKm, weather: null, effisData: null, prediction: null });
+    enriched.push({ raw, municipality, distanceKm, weather: null, effisData: null, sentinelNBR: null, prediction: null });
   }
 
   // Obtener clima y EFFIS en paralelo con concurrencia controlada
@@ -848,7 +869,18 @@ export async function detectFires(
   await runInBatches(topIndexes, GEMINI_MAX_CONCURRENCY, async (i) => {
     const item = enriched[i];
     if (!item.weather) return;
-    item.prediction = await predictFireWithGemini(item.raw, item.weather, item.effisData);
+
+    // Sentinel-2 NBR solo para focos de alta energía o confianza
+    if (item.raw.frp > 50 || item.raw.confidence === 'high') {
+      try {
+        const { nbr } = await getNBRValueForHotspot(item.raw);
+        item.sentinelNBR = nbr;
+      } catch (err) {
+        console.warn('[detectFires] Error obteniendo NBR:', err);
+      }
+    }
+
+    item.prediction = await predictFireWithGemini(item.raw, item.weather, item.effisData, item.sentinelNBR);
   });
 
   const results: DetectedFire[] = [];
