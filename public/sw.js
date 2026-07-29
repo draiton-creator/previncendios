@@ -1,7 +1,5 @@
-const CACHE_NAME = 'previncendios-v1';
+const CACHE_NAME = 'previncendios-v2';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/icon.svg',
 ];
@@ -31,21 +29,38 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((response) => {
-            if (response && response.status === 200 && response.type === 'basic') {
-              const responseClone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-            }
-            return response;
-          })
-          .catch(() => cached);
+  if (url.origin !== self.location.origin) return;
 
-        return cached || fetchPromise;
-      })
+  // Network-first for navigation requests (HTML)
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
     );
+    return;
   }
+
+  // Stale-while-revalidate for other same-origin assets (JS, CSS, images)
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const fetchPromise = fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return response;
+        })
+        .catch(() => cached);
+
+      return cached || fetchPromise;
+    })
+  );
 });
