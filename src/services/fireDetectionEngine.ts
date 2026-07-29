@@ -77,12 +77,24 @@ export interface WeatherData {
 }
 
 export interface FirePrediction {
+  isFire: boolean;
+  isConfirmedByMultipleSources: boolean;
   spreadDirection: string; // Ej: "NE", "SO"
   spreadSpeedKmH: number;
   affectedAreaHectares: number;
+  estimatedPerimeterKm: number;
+  timeToReachNearestTownMinutes: number;
   riskLevel: 'Bajo' | 'Moderado' | 'Alto' | 'Muy Alto' | 'Extremo';
   confidence: 'low' | 'nominal' | 'high';
+  evacuationUrgency: 'ninguna' | 'preventiva' | 'inmediata' | 'critica';
+  recommendedActions: {
+    forCitizens: string;
+    forVolunteers: string;
+    forMunicipality: string;
+  };
+  falseAlarmProbability: number;
   reasoning: string;
+  urgentAlertRequired: boolean;
   effisData?: EffisData;
 }
 
@@ -491,6 +503,54 @@ function computeFireRiskIndex(
   return Math.min(100, Math.max(0, Math.round(risk)));
 }
 
+function buildFirePrediction(
+  partial: Omit<FirePrediction, 'isFire' | 'isConfirmedByMultipleSources' | 'estimatedPerimeterKm' | 'timeToReachNearestTownMinutes' | 'evacuationUrgency' | 'recommendedActions' | 'falseAlarmProbability' | 'urgentAlertRequired'> &
+    Partial<FirePrediction>,
+  effisData?: EffisData | null,
+  distanceToMunicipalityKm?: number
+): FirePrediction {
+  const affectedAreaHectares = partial.affectedAreaHectares ?? 0;
+  const riskLevel = partial.riskLevel ?? 'Bajo';
+  const spreadSpeedKmH = partial.spreadSpeedKmH ?? 0;
+
+  // Perímetro aproximado para un área circular/irregular: 4 * sqrt(area * 10000) metros -> km
+  const estimatedPerimeterKm = partial.estimatedPerimeterKm ?? Math.round(4 * Math.sqrt(affectedAreaHectares * 10000) / 1000 * 10) / 10;
+
+  const timeToReachNearestTownMinutes = partial.timeToReachNearestTownMinutes ??
+    (distanceToMunicipalityKm !== undefined && spreadSpeedKmH > 0
+      ? Math.round((distanceToMunicipalityKm / spreadSpeedKmH) * 60)
+      : 999);
+
+  let evacuationUrgency: FirePrediction['evacuationUrgency'] = 'ninguna';
+  if (riskLevel === 'Extremo') evacuationUrgency = 'critica';
+  else if (riskLevel === 'Muy Alto') evacuationUrgency = 'inmediata';
+  else if (riskLevel === 'Alto') evacuationUrgency = 'preventiva';
+
+  const defaultRecommendedActions: FirePrediction['recommendedActions'] = {
+    forCitizens: 'Manténgase informado por canales oficiales.',
+    forVolunteers: 'Permanezca en alerta hasta nueva orden.',
+    forMunicipality: 'Monitorizar la evolución del foco.',
+  };
+
+  return {
+    isFire: partial.isFire ?? true,
+    isConfirmedByMultipleSources: partial.isConfirmedByMultipleSources ?? false,
+    spreadDirection: partial.spreadDirection ?? 'N',
+    spreadSpeedKmH,
+    affectedAreaHectares,
+    estimatedPerimeterKm,
+    timeToReachNearestTownMinutes,
+    riskLevel,
+    confidence: partial.confidence ?? 'nominal',
+    evacuationUrgency: partial.evacuationUrgency ?? evacuationUrgency,
+    recommendedActions: partial.recommendedActions ?? defaultRecommendedActions,
+    falseAlarmProbability: partial.falseAlarmProbability ?? (riskLevel === 'Bajo' ? 0.5 : 0.2),
+    reasoning: partial.reasoning ?? 'Análisis sin detalle.',
+    urgentAlertRequired: partial.urgentAlertRequired ?? ['Alto', 'Muy Alto', 'Extremo'].includes(riskLevel),
+    effisData: partial.effisData ?? (effisData || undefined),
+  };
+}
+
 function predictFireDeterministic(
   hotspot: Omit<SatelliteHotspot, 'id' | 'municipalityName'>,
   weather: WeatherData,
@@ -530,15 +590,18 @@ function predictFireDeterministic(
     ? ` FWI EFFIS ${effisData.fwi} (${effisData.dangerClass}).`
     : '';
 
-  return {
-    spreadDirection: weather.windDirectionText,
-    spreadSpeedKmH,
-    affectedAreaHectares,
-    riskLevel,
-    confidence: hotspot.confidence,
-    reasoning: `${hotspot.satellite}: FRP ${hotspot.frp} MW, brillo ${hotspot.brightness} K, confianza ${hotspot.confidence}. Clima ${weather.temperatureC}°C / HR ${weather.humidityPercent}% / viento ${weather.windDirectionText} ${weather.windSpeedKmH} km/h (ráfagas ${weather.windGustKmH}) / lluvia ${weather.precipitationMm} mm.${effisText} Riesgo ${riskLevel}.`,
-    effisData: effisData || undefined,
-  };
+  return buildFirePrediction(
+    {
+      spreadDirection: weather.windDirectionText,
+      spreadSpeedKmH,
+      affectedAreaHectares,
+      riskLevel,
+      confidence: hotspot.confidence,
+      reasoning: `${hotspot.satellite}: FRP ${hotspot.frp} MW, brillo ${hotspot.brightness} K, confianza ${hotspot.confidence}. Clima ${weather.temperatureC}°C / HR ${weather.humidityPercent}% / viento ${weather.windDirectionText} ${weather.windSpeedKmH} km/h (ráfagas ${weather.windGustKmH}) / lluvia ${weather.precipitationMm} mm.${effisText} Riesgo ${riskLevel}.`,
+      effisData: effisData || undefined,
+    },
+    effisData
+  );
 }
 
 async function predictFireWithGemini(
@@ -571,12 +634,23 @@ Analiza el siguiente punto caliente detectado por satélite y los datos meteorol
 Responde ÚNICAMENTE con un JSON válido sin markdown:
 {
   "isFire": boolean,
+  "isConfirmedByMultipleSources": boolean,
   "riskLevel": "Bajo" | "Moderado" | "Alto" | "Muy Alto" | "Extremo",
   "confidence": "low" | "nominal" | "high",
   "spreadDirection": "texto como NE o SO",
   "spreadSpeedKmH": number,
   "affectedAreaHectares": number,
-  "reasoning": "explicación corta en español"
+  "estimatedPerimeterKm": number,
+  "timeToReachNearestTownMinutes": number,
+  "evacuationUrgency": "ninguna" | "preventiva" | "inmediata" | "critica",
+  "recommendedActions": {
+    "forCitizens": "instrucción de 1 frase",
+    "forVolunteers": "instrucción de 1 frase",
+    "forMunicipality": "instrucción de 1 frase"
+  },
+  "falseAlarmProbability": number,
+  "reasoning": "explicación corta en español",
+  "urgentAlertRequired": boolean
 }`;
 
   try {
@@ -597,13 +671,20 @@ Responde ÚNICAMENTE con un JSON válido sin markdown:
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean) as Partial<FirePrediction & { isFire: boolean }>;
     if (!parsed.isFire) {
-      return {
-        ...predictFireDeterministic(hotspot, weather, effisData),
-        riskLevel: 'Bajo',
-        confidence: 'low',
-        reasoning: 'El modelo no considera este punto caliente como un incendio activo.',
-        effisData: effisData || undefined,
-      };
+      return buildFirePrediction(
+        {
+          isFire: false,
+          isConfirmedByMultipleSources: false,
+          spreadDirection: weather.windDirectionText,
+          spreadSpeedKmH: 0,
+          affectedAreaHectares: 0,
+          riskLevel: 'Bajo',
+          confidence: 'low',
+          reasoning: 'El modelo no considera este punto caliente como un incendio activo.',
+          effisData: effisData || undefined,
+        },
+        effisData
+      );
     }
     let riskLevel: FirePrediction['riskLevel'] = ['Bajo', 'Moderado', 'Alto', 'Muy Alto', 'Extremo'].includes(parsed.riskLevel || '')
       ? (parsed.riskLevel as FirePrediction['riskLevel'])
@@ -614,17 +695,28 @@ Responde ÚNICAMENTE con un JSON válido sin markdown:
       riskLevel = 'Alto';
     }
 
-    return {
-      spreadDirection: parsed.spreadDirection || weather.windDirectionText,
-      spreadSpeedKmH: Math.max(0, Math.round(parsed.spreadSpeedKmH || 0)),
-      affectedAreaHectares: Math.max(0, Math.round(parsed.affectedAreaHectares || 0)),
-      riskLevel,
-      confidence: ['low', 'nominal', 'high'].includes(parsed.confidence || '')
-        ? (parsed.confidence as FirePrediction['confidence'])
-        : hotspot.confidence,
-      reasoning: parsed.reasoning || 'Análisis realizado por Gemini.',
-      effisData: effisData || undefined,
-    };
+    return buildFirePrediction(
+      {
+        isFire: parsed.isFire ?? true,
+        isConfirmedByMultipleSources: parsed.isConfirmedByMultipleSources ?? hotspot.isGeostationary ?? false,
+        spreadDirection: parsed.spreadDirection || weather.windDirectionText,
+        spreadSpeedKmH: Math.max(0, Math.round(parsed.spreadSpeedKmH || 0)),
+        affectedAreaHectares: Math.max(0, Math.round(parsed.affectedAreaHectares || 0)),
+        estimatedPerimeterKm: parsed.estimatedPerimeterKm,
+        timeToReachNearestTownMinutes: parsed.timeToReachNearestTownMinutes,
+        riskLevel,
+        confidence: ['low', 'nominal', 'high'].includes(parsed.confidence || '')
+          ? (parsed.confidence as FirePrediction['confidence'])
+          : hotspot.confidence,
+        evacuationUrgency: parsed.evacuationUrgency,
+        recommendedActions: parsed.recommendedActions,
+        falseAlarmProbability: parsed.falseAlarmProbability,
+        reasoning: parsed.reasoning || 'Análisis realizado por Gemini.',
+        urgentAlertRequired: parsed.urgentAlertRequired,
+        effisData: effisData || undefined,
+      },
+      effisData
+    );
   } catch (err) {
     console.warn('[Gemini] Error llamando al modelo:', err);
     return predictFireDeterministic(hotspot, weather, effisData);
