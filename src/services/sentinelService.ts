@@ -81,8 +81,9 @@ function buildNbrEvalscript(): string {
 }
 
 function buildNbrRequest(lat: number, lng: number): Record<string, unknown> {
-  const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const toDate = new Date().toISOString().split('T')[0];
+  const toIso = (d: Date) => d.toISOString().split('.')[0] + 'Z';
+  const fromDate = toIso(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const toDate = toIso(new Date());
   const delta = 0.05;
 
   return {
@@ -107,6 +108,7 @@ function buildNbrRequest(lat: number, lng: number): Record<string, unknown> {
       height: 512,
       responses: [{ identifier: 'default', format: { type: 'image/png' } }],
     },
+    evalscript: buildNbrEvalscript(),
   };
 }
 

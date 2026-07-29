@@ -879,7 +879,7 @@ export async function detectFires(
       // Riesgo AEMET por municipio (solo si está dentro del alcance)
       if (e.municipality) {
         try {
-          const aemet = await fetchAemetWeatherData(e.municipality.id);
+          const aemet = await fetchAemetWeatherData(e.municipality.id, e.municipality.name);
           aemetRiskList[i] = aemet.fireRiskLevel;
         } catch (err) {
           console.warn('[detectFires] AEMET no disponible para', e.municipality.id, err);
