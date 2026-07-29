@@ -7,6 +7,8 @@ coverage/
 .env*
 !.env.example
 firebase-applet-config.json
+env_recovery.txt
+public/firebase-messaging-sw.js
 
 # Firebase emulators and cache
 .firebase/
