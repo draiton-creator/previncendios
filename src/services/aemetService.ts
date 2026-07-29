@@ -131,7 +131,7 @@ export async function fetchAemetAlerts(): Promise<AemetAlert[]> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     const res = await fetch(
-      'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAE_wah_RSS.xml',
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAE_wah_RSS.xml'),
       { signal: controller.signal, cache: 'no-store' }
     );
     clearTimeout(timeoutId);
