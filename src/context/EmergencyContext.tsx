@@ -237,7 +237,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     const setupListener = <T,>(
       collectionName: string,
-      setter: (data: T[]) => void,
+      setter: React.Dispatch<React.SetStateAction<T[]>>,
+      initialValue: T[],
       orderField: string = 'createdAt',
       fieldFilter?: { field: string; value: string }
     ) => {
@@ -251,15 +252,20 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
       const unsub = onSnapshot(
         q,
         (snapshot) => {
-          const data = snapshot.docs.map((doc) =>
-            normalizeFirestoreDates({ id: doc.id, ...doc.data() } as T)
-          );
-          setter(data);
+          if (snapshot.empty) {
+            // Si Firestore no tiene documentos, mantener los datos iniciales como fallback
+            setter(initialValue);
+          } else {
+            const data = snapshot.docs.map((doc) =>
+              normalizeFirestoreDates({ id: doc.id, ...doc.data() } as T)
+            );
+            setter(data);
+          }
           setIsLoading(false);
         },
         (err) => {
           console.warn(`Error escuchando ${collectionName}:`, err);
-          setError(`Error cargando ${collectionName}: ${err.message}`);
+          // No sobrescribir los datos si hay error de permisos; mantener los datos actuales
           setIsLoading(false);
         }
       );
@@ -267,20 +273,20 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
 
     // Colecciones públicas: visibles para todo el mundo (incluidos vecinos sin login)
-    setupListener<EmergencyEvent>('emergencyEvents', setIncidents);
-    setupListener<EmergencyAlert>('alerts', setAlerts);
+    setupListener<EmergencyEvent>('emergencyEvents', setIncidents, initialEmergencyEvents);
+    setupListener<EmergencyAlert>('alerts', setAlerts, initialAlerts);
 
     // Colecciones privadas: solo para usuarios autenticados
     if (user) {
-      setupListener<OperationalResource>('resources', setResources);
-      setupListener<ResourceRequest>('resourceRequests', setResourceRequests);
-      setupListener<BandoMessage>('messages', setMessages);
-      setupListener<DocumentAttachment>('documents', setDocuments as any);
-      setupListener<ActivityLog>('activityLogs', setActivityLogs);
+      setupListener<OperationalResource>('resources', setResources, initialResources);
+      setupListener<ResourceRequest>('resourceRequests', setResourceRequests, initialResourceRequests);
+      setupListener<BandoMessage>('messages', setMessages, initialMessages);
+      setupListener<DocumentAttachment>('documents', setDocuments as any, initialDocuments);
+      setupListener<ActivityLog>('activityLogs', setActivityLogs, initialActivityLogs);
 
       // Colecciones filtradas por municipio
-      setupListener<VolunteerProfile>('volunteers', setVolunteers, 'municipalityId', { field: 'municipalityId', value: user.municipalityId });
-      setupListener<PatrolLocation>('patrolLocations', setPatrols, 'timestamp', { field: 'municipalityId', value: user.municipalityId });
+      setupListener<VolunteerProfile>('volunteers', setVolunteers, initialVolunteerProfiles, 'municipalityId', { field: 'municipalityId', value: user.municipalityId });
+      setupListener<PatrolLocation>('patrolLocations', setPatrols, initialPatrolLocations, 'timestamp', { field: 'municipalityId', value: user.municipalityId });
     }
 
     return () => {
