@@ -57,7 +57,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
-  const firmsWmsRef = useRef<L.TileLayer | null>(null);
+  const overlayWmsRef = useRef<Record<string, L.TileLayer | null>>({});
 
   const {
     incidents,
@@ -68,6 +68,41 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     filters,
     setSelectedIncident,
   } = useEmergency();
+
+  // Filtrado avanzado de puntos calientes
+  const confidenceRank: Record<string, number> = { low: 0, nominal: 1, high: 2 };
+  const riskRank: Record<string, number> = { Bajo: 0, Moderado: 1, Alto: 2, 'Muy Alto': 3, Extremo: 4 };
+
+  const filteredSatelliteHotspots = satelliteHotspots.filter((spot) => {
+    if (filters.satelliteSource !== 'todos') {
+      const source = filters.satelliteSource;
+      if (source === 'FIRMS') {
+        if (spot.satellite === 'GOES-19') return false;
+      } else if (source === 'GOES') {
+        if (spot.satellite !== 'GOES-19') return false;
+      } else if (source === 'SEVIRI') {
+        if (spot.satellite !== 'SEVIRI-MSG') return false;
+      } else if (source === 'Sentinel-3') {
+        if (spot.satellite !== 'Sentinel-3') return false;
+      } else if (['MODIS', 'VIIRS', 'NOAA-20', 'NOAA-21'].includes(source)) {
+        if (!spot.satellite?.toUpperCase().includes(source)) return false;
+      }
+    }
+
+    if (filters.riskLevel !== 'todos' && spot.riskLevel !== filters.riskLevel) return false;
+    if (filters.minConfidence !== 'todos' && (confidenceRank[spot.confidence] ?? 0) < (confidenceRank[filters.minConfidence] ?? 0)) return false;
+    if (filters.minFrp > 0 && (spot.frp || 0) < filters.minFrp) return false;
+    if (filters.showOnlyConfirmed && !spot.seviriConfirmed && !spot.riskLevel?.includes('Alto')) return false;
+
+    if (filters.timeWindow !== 'todos') {
+      const acq = new Date(`${spot.acqDate}T${spot.acqTime?.slice(0, 2) || '00'}:${spot.acqTime?.slice(2, 4) || '00'}:00Z`);
+      const now = new Date();
+      const hours = { '1h': 1, '6h': 6, '24h': 24, '7d': 168 }[filters.timeWindow] || 0;
+      if (now.getTime() - acq.getTime() > hours * 60 * 60 * 1000) return false;
+    }
+
+    return true;
+  });
 
   // Filtrado de incidencias
   const filteredIncidents = incidents.filter((inc) => {
@@ -126,10 +161,13 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
       map.removeLayer(baseLayerRef.current);
       baseLayerRef.current = null;
     }
-    if (firmsWmsRef.current) {
-      map.removeLayer(firmsWmsRef.current);
-      firmsWmsRef.current = null;
-    }
+    Object.keys(overlayWmsRef.current).forEach((key) => {
+      const layer = overlayWmsRef.current[key];
+      if (layer) {
+        map.removeLayer(layer);
+        overlayWmsRef.current[key] = null;
+      }
+    });
 
     let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
     let attribution = '&copy; OpenStreetMap';
@@ -144,21 +182,115 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
 
     baseLayerRef.current = L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(map);
 
-    if (mapLayers.showFirmsWms) {
-      const firmsWmsUrl = getFirmsWmsBaseUrl();
-      if (firmsWmsUrl) {
-        firmsWmsRef.current = L.tileLayer
-          .wms(firmsWmsUrl, {
-            layers: 'fires_viirs_24,fires_modis_24',
-            format: 'image/png',
-            transparent: true,
-            opacity: 0.85,
-            version: '1.1.1',
-          })
-          .addTo(map);
-      }
+    const overlayConfigs: Record<string, { url: string; options: L.WMSOptions }> = {};
+
+    const firmsWmsUrl = getFirmsWmsBaseUrl();
+    if (mapLayers.showFirmsWms && firmsWmsUrl) {
+      overlayConfigs.firms = {
+        url: firmsWmsUrl,
+        options: {
+          layers: 'fires_viirs_24,fires_modis_24',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.85,
+          version: '1.1.1',
+        },
+      };
     }
-  }, [mapLayers.tileLayer, mapLayers.showFirmsWms]);
+
+    if (mapLayers.showEffisWms) {
+      overlayConfigs.effis = {
+        url: 'https://maps.effis.emergency.copernicus.eu/effis',
+        options: {
+          layers: 'viirs.hs,modis.hs',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.9,
+          version: '1.3.0',
+        },
+      };
+    }
+
+    if (mapLayers.showSeviriWms) {
+      overlayConfigs.seviri = {
+        url: 'https://adaguc.lsasvcs.ipma.pt/adagucserver',
+        options: {
+          layers: 'FRP',
+          styles: 'pointdata/point',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.8,
+          version: '1.3.0',
+          DATASET: 'MSG-FRP',
+        } as L.WMSOptions,
+      };
+    }
+
+    if (mapLayers.showEffisFwiWms) {
+      overlayConfigs.effisFwi = {
+        url: 'https://maps.effis.emergency.copernicus.eu/effis',
+        options: {
+          layers: 'fwi',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.6,
+          version: '1.3.0',
+        },
+      };
+    }
+
+    if (mapLayers.showIgnCatastroWms) {
+      overlayConfigs.ignCatastro = {
+        url: 'https://www.ign.es/wms-inspire/catastro',
+        options: {
+          layers: 'BU.Building',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.6,
+          version: '1.3.0',
+        },
+      };
+    }
+
+    if (mapLayers.showAemetPrecipitationWms) {
+      overlayConfigs.aemetPrecip = {
+        url: 'https://maps.effis.emergency.copernicus.eu/effis',
+        options: {
+          layers: 'precipitation',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.7,
+          version: '1.3.0',
+        },
+      };
+    }
+
+    if (mapLayers.showEumetviewWms) {
+      overlayConfigs.eumetview = {
+        url: 'https://view.eumetsat.int/geoserver/wms',
+        options: {
+          layers: 'EO:EUM:DAT:MSG:HRSEVIRI',
+          format: 'image/png',
+          transparent: true,
+          opacity: 0.7,
+          version: '1.3.0',
+        },
+      };
+    }
+
+    Object.entries(overlayConfigs).forEach(([key, { url, options }]) => {
+      overlayWmsRef.current[key] = L.tileLayer.wms(url, options).addTo(map);
+    });
+  }, [
+    mapLayers.tileLayer,
+    mapLayers.showFirmsWms,
+    mapLayers.showEffisWms,
+    mapLayers.showSeviriWms,
+    mapLayers.showEffisFwiWms,
+    mapLayers.showIgnCatastroWms,
+    mapLayers.showAemetPrecipitationWms,
+    mapLayers.showEumetviewWms,
+  ]);
 
   // Dibujar Marcadores y Capas
   useEffect(() => {
@@ -230,7 +362,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
 
     // 2. DIBUJAR PUNTOS CALIENTES SATELITALES NASA FIRMS
     if (mapLayers.showSatelliteFirms) {
-      satelliteHotspots.forEach((spot) => {
+      filteredSatelliteHotspots.forEach((spot) => {
         const markerColor =
           spot.riskLevel === 'Extremo' || spot.riskLevel === 'Muy Alto'
             ? '#dc2626'
@@ -259,6 +391,11 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
             <h4 style="font-weight: 700; font-size: 13px; margin-top: 6px;">Anomalía Térmica FIRMS</h4>
             <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Municipio:</b> ${spot.municipalityName}</p>
             <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Brillo:</b> ${spot.brightness || '-'} K · <b>Confianza:</b> ${spot.confidence}</p>
+            ${
+              typeof spot.seviriFRP === 'number' && spot.seviriFRP > 0
+                ? `<p style="font-size: 11px; color: #b45309; margin: 2px 0;"><b>SEVIRI FRP:</b> ${spot.seviriFRP.toFixed(1)} MW (confianza ${spot.seviriConfidence?.toFixed(0) ?? '-'}%)</p>`
+                : ''
+            }
             <p style="font-size: 10px; color: #6b7280; margin: 2px 0;"><b>Detección:</b> ${spot.acqDate} ${spot.acqTime} UTC${spot.daynight ? ' · ' + spot.daynight : ''}${spot.version ? ' · v' + spot.version : ''}</p>
             ${
               spot.riskLevel

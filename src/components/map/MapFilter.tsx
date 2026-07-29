@@ -3,8 +3,9 @@
  */
 
 import React from 'react';
-import { Search, Filter, RotateCcw, MapPin } from 'lucide-react';
+import { Search, Filter, RotateCcw, MapPin, Satellite, Flame, Clock, Gauge } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
+import { FilterState } from '../../types';
 
 export const MapFilter: React.FC = () => {
   const { filters, updateFilters, resetFilters, municipalities } = useEmergency();
@@ -80,6 +81,86 @@ export const MapFilter: React.FC = () => {
           <option value="estabilizado">Estabilizado</option>
           <option value="extinguido">Extinguido</option>
         </select>
+
+        {/* Satélite */}
+        <select
+          value={filters.satelliteSource}
+          onChange={(e) => updateFilters({ satelliteSource: e.target.value as FilterState['satelliteSource'] })}
+          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+        >
+          <option value="todos">Todos los satélites</option>
+          <option value="GOES">GOES-19</option>
+          <option value="SEVIRI">SEVIRI (EUMETSAT)</option>
+          <option value="Sentinel-3">Sentinel-3</option>
+          <option value="NOAA-21">NOAA-21 VIIRS</option>
+          <option value="NOAA-20">NOAA-20 VIIRS</option>
+          <option value="VIIRS">VIIRS-NPP</option>
+          <option value="MODIS">MODIS Terra/Aqua</option>
+        </select>
+
+        {/* Riesgo */}
+        <select
+          value={filters.riskLevel}
+          onChange={(e) => updateFilters({ riskLevel: e.target.value as FilterState['riskLevel'] })}
+          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+        >
+          <option value="todos">Cualquier riesgo</option>
+          <option value="Bajo">Bajo</option>
+          <option value="Moderado">Moderado</option>
+          <option value="Alto">Alto</option>
+          <option value="Muy Alto">Muy Alto</option>
+          <option value="Extremo">Extremo</option>
+        </select>
+
+        {/* Confianza mínima */}
+        <select
+          value={filters.minConfidence}
+          onChange={(e) => updateFilters({ minConfidence: e.target.value as FilterState['minConfidence'] })}
+          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+        >
+          <option value="todos">Cualquier confianza</option>
+          <option value="low">Baja</option>
+          <option value="nominal">Nominal</option>
+          <option value="high">Alta</option>
+        </select>
+
+        {/* Ventana temporal */}
+        <select
+          value={filters.timeWindow}
+          onChange={(e) => updateFilters({ timeWindow: e.target.value as FilterState['timeWindow'] })}
+          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+        >
+          <option value="todos">Cualquier momento</option>
+          <option value="1h">Última hora</option>
+          <option value="6h">Últimas 6 h</option>
+          <option value="24h">Últimas 24 h</option>
+          <option value="7d">Últimos 7 días</option>
+        </select>
+
+        {/* FRP mínimo */}
+        <input
+          type="number"
+          min={0}
+          step={1}
+          value={filters.minFrp}
+          onChange={(e) => updateFilters({ minFrp: Number(e.target.value) || 0 })}
+          placeholder="FRP min"
+          className="w-24 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+        />
+
+        {/* Solo confirmados */}
+        <button
+          onClick={() => updateFilters({ showOnlyConfirmed: !filters.showOnlyConfirmed })}
+          className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+            filters.showOnlyConfirmed
+              ? 'border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/80 dark:text-red-300'
+              : 'border-gray-200 bg-gray-50 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white'
+          }`}
+          title="Solo focos confirmados por SEVIRI o riesgo Alto/Muy Alto/Extremo"
+        >
+          <Flame className="inline h-3.5 w-3.5 mr-1" />
+          Confirmados
+        </button>
 
         {/* Limpiar Filtros */}
         <button

@@ -119,6 +119,12 @@ const initialFilters: FilterState = {
   severity: 'todas',
   status: 'todos',
   searchTerm: '',
+  satelliteSource: 'todos',
+  riskLevel: 'todos',
+  minConfidence: 'todos',
+  timeWindow: 'todos',
+  minFrp: 0,
+  showOnlyConfirmed: false,
 };
 
 const initialMapLayers: MapLayerState = {
@@ -128,6 +134,12 @@ const initialMapLayers: MapLayerState = {
   showPatrols: true,
   showRiskZones: true,
   showFirmsWms: true,
+  showEffisWms: false,
+  showSeviriWms: false,
+  showEffisFwiWms: false,
+  showIgnCatastroWms: false,
+  showAemetPrecipitationWms: false,
+  showEumetviewWms: false,
   tileLayer: 'streets',
 };
 

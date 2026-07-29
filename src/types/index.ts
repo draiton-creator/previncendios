@@ -314,6 +314,13 @@ export interface FilterState {
   severity: string;
   status: string;
   searchTerm: string;
+  // Filtros avanzados de satélite y riesgo
+  satelliteSource: 'todos' | 'FIRMS' | 'GOES' | 'SEVIRI' | 'Sentinel-3' | 'MODIS' | 'VIIRS' | 'NOAA-20' | 'NOAA-21';
+  riskLevel: 'todos' | 'Bajo' | 'Moderado' | 'Alto' | 'Muy Alto' | 'Extremo';
+  minConfidence: 'todos' | 'low' | 'nominal' | 'high';
+  timeWindow: 'todos' | '1h' | '6h' | '24h' | '7d';
+  minFrp: number;
+  showOnlyConfirmed: boolean;
 }
 
 export interface MapLayerState {
@@ -323,5 +330,12 @@ export interface MapLayerState {
   showPatrols: boolean;
   showRiskZones: boolean;
   showFirmsWms: boolean;
+  // Capas WMS adicionales
+  showEffisWms: boolean;
+  showSeviriWms: boolean;
+  showEffisFwiWms: boolean;
+  showIgnCatastroWms: boolean;
+  showAemetPrecipitationWms: boolean;
+  showEumetviewWms: boolean;
   tileLayer: 'streets' | 'satellite' | 'terrain';
 }

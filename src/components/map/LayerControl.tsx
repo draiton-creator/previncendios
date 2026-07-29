@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw } from 'lucide-react';
+import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw, ShieldAlert, CloudRain, MapPinned } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 
 export const LayerControl: React.FC = () => {
@@ -52,7 +52,85 @@ export const LayerControl: React.FC = () => {
         }`}
       >
         <Globe className="h-3.5 w-3.5" />
-        <span>Capa FIRMS NASA</span>
+        <span>FIRMS NASA</span>
+      </button>
+
+      {/* Capa WMS EFFIS */}
+      <button
+        onClick={() => updateMapLayers({ showEffisWms: !mapLayers.showEffisWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showEffisWms
+            ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <ShieldAlert className="h-3.5 w-3.5" />
+        <span>EFFIS Activos</span>
+      </button>
+
+      {/* Capa WMS SEVIRI */}
+      <button
+        onClick={() => updateMapLayers({ showSeviriWms: !mapLayers.showSeviriWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showSeviriWms
+            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/80 dark:text-yellow-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Satellite className="h-3.5 w-3.5" />
+        <span>SEVIRI</span>
+      </button>
+
+      {/* Capa WMS Riesgo FWI EFFIS */}
+      <button
+        onClick={() => updateMapLayers({ showEffisFwiWms: !mapLayers.showEffisFwiWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showEffisFwiWms
+            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Map className="h-3.5 w-3.5" />
+        <span>Riesgo FWI</span>
+      </button>
+
+      {/* Capa WMS IGN Catastro */}
+      <button
+        onClick={() => updateMapLayers({ showIgnCatastroWms: !mapLayers.showIgnCatastroWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showIgnCatastroWms
+            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <MapPinned className="h-3.5 w-3.5" />
+        <span>IGN Catastro</span>
+      </button>
+
+      {/* Capa WMS Precipitación AEMET */}
+      <button
+        onClick={() => updateMapLayers({ showAemetPrecipitationWms: !mapLayers.showAemetPrecipitationWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showAemetPrecipitationWms
+            ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <CloudRain className="h-3.5 w-3.5" />
+        <span>Precipitación</span>
+      </button>
+
+      {/* Capa WMS EUMETView */}
+      <button
+        onClick={() => updateMapLayers({ showEumetviewWms: !mapLayers.showEumetviewWms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showEumetviewWms
+            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Globe className="h-3.5 w-3.5" />
+        <span>EUMETView</span>
       </button>
 
       {/* Recursos */}
