@@ -276,7 +276,8 @@ export interface SatelliteHotspot {
   confidence: 'nominal' | 'high' | 'low';
   acqDate: string;
   acqTime: string;
-  satellite: 'Aqua' | 'Terra' | 'VIIRS-NPP' | 'NOAA-20' | 'NOAA-21' | string;
+  satellite: 'Aqua' | 'Terra' | 'VIIRS-NPP' | 'NOAA-20' | 'NOAA-21' | 'GOES-19' | string;
+  isGeostationary?: boolean;
   frp: number; // Fire Radiative Power (MW)
   municipalityName: string;
   distanceToMunicipalityKm?: number;

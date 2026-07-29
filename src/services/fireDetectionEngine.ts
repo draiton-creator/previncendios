@@ -11,23 +11,25 @@
 
 import { EmergencyEvent, Municipality, SatelliteHotspot } from '../types';
 import { mockSatelliteHotspots } from './firmsSatelliteService';
+import { fetchGoesHotspots } from './goesService';
 
 const FIRMS_API_KEY = import.meta.env.VITE_FIRMS_API_KEY as string | undefined;
 const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY as string | undefined;
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
 // Bounding box aproximado de España peninsular + Baleares + Canarias
-const SPAIN_BBOX = {
+export const SPAIN_BBOX = {
   minLng: -18.4,
   minLat: 27.6,
   maxLng: 4.4,
   maxLat: 43.8,
 };
 
-const SPAIN_AREA = `${SPAIN_BBOX.minLng},${SPAIN_BBOX.minLat},${SPAIN_BBOX.maxLng},${SPAIN_BBOX.maxLat}`;
+export const SPAIN_AREA = `${SPAIN_BBOX.minLng},${SPAIN_BBOX.minLat},${SPAIN_BBOX.maxLng},${SPAIN_BBOX.maxLat}`;
 
 // Fuentes FIRMS a combinar para máxima cobertura (NRT = Near Real Time)
-const FIRMS_SOURCES = ['VIIRS_NOAA20_NRT', 'VIIRS_SNPP_NRT', 'MODIS_NRT'] as const;
+// NOAA-21 primero por ser el VIIRS más moderno (JPSS-2, 375 m, ~3 pasadas/día)
+const FIRMS_SOURCES = ['VIIRS_NOAA21_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_SNPP_NRT', 'MODIS_NRT'] as const;
 
 const CARDINAL_TO_DEG: Record<string, number> = {
   N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5,
@@ -160,14 +162,16 @@ function parseSatellite(value: string | undefined, source: string): SatelliteHot
   if (byValue[raw]) return byValue[raw];
 
   const bySource: Record<string, SatelliteHotspot['satellite']> = {
+    GOES_NRT: 'GOES-19',
+    VIIRS_NOAA21_NRT: 'NOAA-21',
     VIIRS_NOAA20_NRT: 'NOAA-20',
     VIIRS_SNPP_NRT: 'VIIRS-NPP',
     MODIS_NRT: 'Terra',
   };
-  return bySource[source] || 'NOAA-20';
+  return bySource[source] || 'NOAA-21';
 }
 
-function parseFirmsCsv(csv: string, source: string): Omit<SatelliteHotspot, 'id' | 'municipalityName'>[] {
+export function parseFirmsCsv(csv: string, source: string): Omit<SatelliteHotspot, 'id' | 'municipalityName'>[] {
   if (!csv || !csv.trim()) return [];
   const lines = csv.trim().split('\n');
   const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
@@ -248,7 +252,7 @@ function areaKey(lat: number, lng: number, decimals = 1) {
   return `${lat.toFixed(decimals)}:${lng.toFixed(decimals)}`;
 }
 
-async function fetchWithTimeout(url: string, timeoutMs = 15000, init?: RequestInit) {
+export async function fetchWithTimeout(url: string, timeoutMs = 15000, init?: RequestInit) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -621,7 +625,33 @@ export async function detectFires(
   municipalities: Municipality[],
   existingIncidents: EmergencyEvent[] = []
 ): Promise<DetectedFire[]> {
-  const rawHotspots = await fetchFirmsHotspots();
+  // GOES-19 primero por latencia < 10 min, luego satélites polares FIRMS
+  const [goesResult, firmsResult] = await Promise.allSettled([fetchGoesHotspots(), fetchFirmsHotspots()]);
+  const allHotspots: Omit<SatelliteHotspot, 'id' | 'municipalityName'>[] = [];
+
+  if (goesResult.status === 'fulfilled') {
+    allHotspots.push(...goesResult.value);
+  } else {
+    console.warn('[detectFires] GOES-19 falló:', goesResult.reason);
+  }
+
+  if (firmsResult.status === 'fulfilled') {
+    allHotspots.push(...firmsResult.value);
+  } else {
+    console.warn('[detectFires] FIRMS falló:', firmsResult.reason);
+  }
+
+  // Deduplicar: si GOES y polar coinciden, GOES (isGeostationary) gana por baja latencia
+  const seen = new Map<string, Omit<SatelliteHotspot, 'id' | 'municipalityName'>>();
+  for (const h of allHotspots) {
+    const key = `${h.acqDate}:${h.acqTime}:${h.latitude.toFixed(2)}:${h.longitude.toFixed(2)}`;
+    const existing = seen.get(key);
+    if (!existing || h.isGeostationary || h.frp > existing.frp) {
+      seen.set(key, h);
+    }
+  }
+  const rawHotspots = Array.from(seen.values()).sort((a, b) => b.frp - a.frp);
+
   if (!rawHotspots.length) return [];
 
   const cutoffTime = Date.now() - 2 * 60 * 60 * 1000;
