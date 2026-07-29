@@ -39,6 +39,7 @@ import {
   FilterState,
   MapLayerState,
   Camera,
+  DisasterEvent,
   IncidentSeverity,
   IncidentStatus,
   IncidentType,
@@ -61,6 +62,7 @@ import { detectFires } from '../services/fireDetectionEngine';
 import { fetchAemetAlerts } from '../services/aemetService';
 import { showLocalNotification, hasNotificationPermission } from '../services/notificationService';
 import { fetchPublicCameras } from '../services/cameraService';
+import { fetchEarthquakesSpain, fetchGdacsEvents } from '../services/disasterService';
 
 interface EmergencyContextType {
   municipalities: Municipality[];
@@ -76,6 +78,7 @@ interface EmergencyContextType {
   satelliteHotspots: SatelliteHotspot[];
   aemetAlerts: AemetAlert[];
   cameras: Camera[];
+  disasterEvents: DisasterEvent[];
 
   // Geolocalización pública para alertas sin registro
   publicLocation: { latitude: number; longitude: number } | null;
@@ -147,6 +150,8 @@ const initialMapLayers: MapLayerState = {
   showAemetPrecipitationWms: false,
   showEumetviewWms: false,
   showSentinel3Wms: false,
+  showEarthquakes: true,
+  showFloodsStorms: true,
   tileLayer: 'streets',
 };
 
@@ -193,6 +198,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [satelliteHotspots, setSatelliteHotspots] = useState<SatelliteHotspot[]>([]);
   const [aemetAlerts, setAemetAlerts] = useState<AemetAlert[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [disasterEvents, setDisasterEvents] = useState<DisasterEvent[]>([]);
   const [publicLocation, setPublicLocationState] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSatelliteScanning, setIsSatelliteScanning] = useState<boolean>(false);
   const [lastSatelliteScan, setLastSatelliteScan] = useState<string | null>(null);
@@ -227,6 +233,13 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
     fetchPublicCameras()
       .then((cams) => setCameras(cams))
       .catch((err) => console.warn('Error cargando cámaras:', err));
+  }, []);
+
+  // Cargar otras catástrofes: terremotos e inundaciones/tormentas
+  useEffect(() => {
+    Promise.all([fetchEarthquakesSpain(), fetchGdacsEvents()])
+      .then(([eq, gdacs]) => setDisasterEvents([...eq, ...gdacs]))
+      .catch((err) => console.warn('Error cargando catástrofes:', err));
   }, []);
 
   // Cargar listado real de municipios españoles
@@ -784,6 +797,7 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
         satelliteHotspots,
         aemetAlerts,
         cameras,
+        disasterEvents,
         publicLocation,
         setPublicLocation,
         isLoading,

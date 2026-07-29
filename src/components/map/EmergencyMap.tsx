@@ -65,6 +65,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
     resources,
     patrols,
     cameras,
+    disasterEvents,
     mapLayers,
     filters,
     setSelectedIncident,
@@ -536,12 +537,57 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         markersLayer.addLayer(marker);
       });
     }
+
+    // 6. DIBUJAR OTRAS CATÁSTROFES (terremotos, inundaciones, tormentas)
+    if (mapLayers.showEarthquakes || mapLayers.showFloodsStorms) {
+      disasterEvents.forEach((event) => {
+        if (event.type === 'earthquake' && !mapLayers.showEarthquakes) return;
+        if ((event.type === 'flood' || event.type === 'storm' || event.type === 'tsunami') && !mapLayers.showFloodsStorms) return;
+
+        const color =
+          event.severity === 'critical'
+            ? '#7f1d1d'
+            : event.severity === 'high'
+            ? '#dc2626'
+            : event.severity === 'medium'
+            ? '#f97316'
+            : '#6b7280';
+        const symbol = event.type === 'earthquake' ? '⭓' : event.type === 'flood' ? '💧' : event.type === 'tsunami' ? '🌊' : '⛈';
+
+        const marker = L.circleMarker([event.latitude, event.longitude], {
+          radius: 6 + (event.magnitude || 0) * 1.5,
+          color: '#ffffff',
+          weight: 1,
+          opacity: 1,
+          fillColor: color,
+          fillOpacity: 0.85,
+        });
+
+        marker.bindPopup(`
+          <div style="min-width: 220px;">
+            <span style="background-color: ${color}; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold;">
+              ${event.type.toUpperCase()} · ${event.severity.toUpperCase()}
+            </span>
+            <h4 style="font-weight: 700; font-size: 13px; margin-top: 6px;">${event.title}</h4>
+            <p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Origen:</b> ${event.source}</p>
+            ${event.magnitude ? `<p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Magnitud:</b> ${event.magnitude}</p>` : ''}
+            ${event.depthKm ? `<p style="font-size: 11px; color: #4b5563; margin: 2px 0;"><b>Profundidad:</b> ${Math.round(event.depthKm)} km</p>` : ''}
+            <p style="font-size: 10px; color: #6b7280; margin: 2px 0;"><b>Fecha:</b> ${new Date(event.pubDate).toLocaleString('es-ES')}</p>
+            ${event.description ? `<p style="font-size: 10px; color: #4b5563; margin-top: 4px;">${event.description}</p>` : ''}
+            ${event.url ? `<a href="${event.url}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top: 8px; background-color: #4b5563; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;">Ver detalle</a>` : ''}
+          </div>
+        `);
+
+        markersLayer.addLayer(marker);
+      });
+    }
   }, [
     filteredIncidents,
     satelliteHotspots,
     resources,
     patrols,
     cameras,
+    disasterEvents,
     mapLayers,
     getFirmsWmsBaseUrl,
   ]);

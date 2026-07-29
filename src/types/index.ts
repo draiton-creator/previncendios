@@ -336,6 +336,21 @@ export interface Camera {
   lastUpdate?: string;
 }
 
+export interface DisasterEvent {
+  id: string;
+  type: 'earthquake' | 'flood' | 'storm' | 'tsunami';
+  title: string;
+  latitude: number;
+  longitude: number;
+  magnitude?: number;
+  depthKm?: number;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  pubDate: string;
+  url?: string;
+  source: 'USGS' | 'GDACS' | 'AEMET' | 'Copernicus';
+  description?: string;
+}
+
 export interface MapLayerState {
   showIncidents: boolean;
   showSatelliteFirms: boolean;
@@ -352,5 +367,8 @@ export interface MapLayerState {
   showAemetPrecipitationWms: boolean;
   showEumetviewWms: boolean;
   showSentinel3Wms: boolean;
+  // Otras catástrofes
+  showEarthquakes: boolean;
+  showFloodsStorms: boolean;
   tileLayer: 'streets' | 'satellite' | 'terrain';
 }

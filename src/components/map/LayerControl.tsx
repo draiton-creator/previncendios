@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw, ShieldAlert, CloudRain, MapPinned, Video } from 'lucide-react';
+import { Layers, Flame, Satellite, Truck, Radio, Map, Globe, Mountain, RefreshCw, ShieldAlert, CloudRain, MapPinned, Video, Activity, CloudLightning } from 'lucide-react';
 import { useEmergency } from '../../context/EmergencyContext';
 
 export const LayerControl: React.FC = () => {
@@ -157,6 +157,32 @@ export const LayerControl: React.FC = () => {
       >
         <Satellite className="h-3.5 w-3.5" />
         <span>Sentinel-3</span>
+      </button>
+
+      {/* Terremotos */}
+      <button
+        onClick={() => updateMapLayers({ showEarthquakes: !mapLayers.showEarthquakes })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showEarthquakes
+            ? 'bg-stone-100 text-stone-800 dark:bg-stone-950/80 dark:text-stone-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <Activity className="h-3.5 w-3.5" />
+        <span>Terremotos</span>
+      </button>
+
+      {/* Inundaciones / Tormentas */}
+      <button
+        onClick={() => updateMapLayers({ showFloodsStorms: !mapLayers.showFloodsStorms })}
+        className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+          mapLayers.showFloodsStorms
+            ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 opacity-60'
+        }`}
+      >
+        <CloudLightning className="h-3.5 w-3.5" />
+        <span>Inundaciones</span>
       </button>
 
       {/* Recursos */}
